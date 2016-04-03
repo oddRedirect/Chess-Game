@@ -48,7 +48,6 @@ class Piece:
 class captureState:
     lastcapture = False
     lcsqr = False
-    epsqr = False
     lcprev = False
 ##    epcolour = False
 ##    epsqr = False

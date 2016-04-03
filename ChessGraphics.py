@@ -10,8 +10,8 @@ blue = (0, 0, 128)
 green = (0, 255, 0)
 
 marginsize = 30
-screenwidth = 1024
-screenheight = 640
+screenwidth = 1024#640
+screenheight = 640#480
 pi = 3.14159
 
 if screenwidth >= screenheight:
@@ -141,10 +141,9 @@ def DoCompTurn(turn):
     elif mainState.movenumber <= 5:
         start, end = ChessEngine.OpeningMoves(turn, mainState.movenumber, mainState.randmove)
     else:
-        start, end = ChessEngine.FindBest(turn)
+        start, end = ChessEngine.FindBest(turn, 1)
     ChessEngine.MovePiece(start, end)
     ChessEngine.updateCastlingRights()
-    #time.sleep(1)
     drawStuff()
     drawHighlight(end)
     if turn == 'white':
@@ -222,11 +221,11 @@ def main():
                     resetState()
         # Checks for mate
         if mainState.turn != 'end':
-            k = ChessEngine.isMated(mainState.turn)
-        if k:
-            if k == 'checkmate':
+            mate_status = ChessEngine.isMated(mainState.turn)
+        if mate_status:
+            if mate_status == 'checkmate':
                 message = MessageFont.render("CHECKMATE!", 1, blue)
-            elif k == 'stalemate':
+            elif mate_status == 'stalemate':
                 message = MessageFont.render("STALEMATE!", 1, blue)
             screen.blit(message, (screenwidth / 2 - marginsize, marginsize /2))
             pygame.display.update()
