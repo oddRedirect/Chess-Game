@@ -6,7 +6,7 @@ Nval = 3
 Bval = 3.2
 Rval = 5
 Qval = 9
-Kval = 1000
+Kval = 100
 
 class Piece:
     piecelist = []
@@ -48,9 +48,14 @@ class Piece:
 class captureState:
     lastcapture = False
     lcsqr = False
-    epcolour = False
     epsqr = False
-    ep_prev = False
+    lcprev = False
+##    epcolour = False
+##    epsqr = False
+##    ep_prev = False
+
+curState = captureState()
+curState.lastcapture = False
 
 
 # White pieces:
@@ -139,7 +144,7 @@ def resetboard():
     wk.piecelist = [4]
     wq.piecelist = [3]
     wb.piecelist = [2, 5]
-    wn.piecelist =[1, 6]
+    wn.piecelist = [1, 6]
     wr.piecelist = [0, 7]
     wp.piecelist = range(8, 16)
     bk.piecelist = [60]
@@ -183,7 +188,7 @@ def pieceatsqr(num):
     for y in allpieces:
         if y.colour + y.name == s:
             return y
-    return "empty"
+    return False
 
 
 # Changes the value of the piece on start to end
@@ -216,22 +221,34 @@ def pawnPromoted():
     return False
 
 
+# NOTE: Use this class to make and undo a move
+class MoveState:
+    cur_board = boardlist
+
+
 # Moves the piece on start to end
 def MovePiece(start, end):
     j = pieceatsqr(start)
     m = pieceatsqr(end)
+    
+    prevState = captureState()
+    prevState.lastcapture = curState.lastcapture
+    prevState.lcsqr = curState.lcsqr
 
-    if j == 'empty':
+    curState.lcprev = prevState
+    curState.lastcapture = False
+    curState.lcsqr = False
+    
+    if not j:
         return 'Invalid start square'
-    elif m == 'empty':
-        captureState.lastcapture = False
+    elif not m:
         ChangeVar(start,end)
     elif j.colour == m.colour:
         return 'Invalid move'
     else:
         RemovePiece(end)
-        captureState.lastcapture = m
-        captureState.lcsqr = end
+        curState.lastcapture = m
+        curState.lcsqr = end
         ChangeVar(start, end)
 
     # Move the rook if the king castled
@@ -298,9 +315,12 @@ def updateCastlingRights():
 def UndoMove(end, start):
     j = pieceatsqr(end)
     ChangeVar(end, start)
-    if captureState.lastcapture:
-        AddPiece(captureState.lastcapture, captureState.lcsqr)
-    captureState.lastcapture = False
+    if curState.lastcapture:
+        AddPiece(curState.lastcapture, curState.lcsqr)
+
+    tempState = curState.lcprev
+    curState.lastcapture = tempState.lastcapture
+    curState.lcsqr = tempState.lcsqr
 
     if j.name == 'king' and (end - start) == 2:
         ChangeVar(start + 1, end + 1)
@@ -455,7 +475,7 @@ def PieceMovementHelp(num):
     p = []
     q = []
 
-    if j == 'empty':
+    if not j:
         return 'Invalid start square'
 
     # King Movement
@@ -465,13 +485,13 @@ def PieceMovementHelp(num):
         if j.cancastleshort and i <= 61:
             a = pieceatsqr(i + 1)
             b = pieceatsqr(i + 2)
-            if a == 'empty' and b == 'empty':
+            if not a and not b:
                 p.append(i + 2)
         if j.cancastlelong and i >= 3:
             a = pieceatsqr(i - 1)
             b = pieceatsqr(i - 2)
             c = pieceatsqr(i - 3)
-            if a == 'empty' and b == 'empty' and c == 'empty':
+            if not(a) and not(b) and not(c):
                 p.append(i - 2)    
 
     # Pawn Movement
@@ -491,18 +511,18 @@ def PieceMovementHelp(num):
         # u is used to signify direction of pawn movement
         if n != endrank:
             s = pieceatsqr(i + 8*u)
-            if s == 'empty':
+            if not(s):
                 q.append(i + 8*u)
             z = pieceatsqr(i + 7*u)
-            if z != 'empty' and z.colour != j.colour and m != leftfile:
+            if z and z.colour != j.colour and m != leftfile:
                 q.append(i + 7*u)
             if i <= 54:
                 y = pieceatsqr(i + 9*u)
-                if y != 'empty' and y.colour != j.colour and m != rightfile:
+                if y and y.colour != j.colour and m != rightfile:
                     q.append(i + 9*u)
         if n == startrank:
             t = pieceatsqr(i + 16*u)
-            if s == 'empty' and t == 'empty':
+            if not(s) and not(t):
                 q.append(i + 16*u)
         #if captureState.epcolour == j.colour:
          #   sqr = captureState.epsqr
@@ -535,35 +555,48 @@ def PieceMovementHelp(num):
     return q
 
 
-# Determines whether a move can get you killed
-def isSafe(sqr, colour, opp):
+# Danger Functions
+def PawnDanger(sqr, colour, opp):
     i = sqr
-    # Pawn danger?
     if colour == 'white':
         if i <= 47 and i % 8 != 7 and boardlist[i+9] == 'blackpawn':
-            return False
+            return True
         if i <= 47 and i % 8 != 0 and boardlist[i+7] == 'blackpawn':
-            return False
+            return True
     elif colour == 'black':
         if i >= 16 and i % 8 != 0 and boardlist[i-9] == 'whitepawn':
-            return False
+            return True
         if i >= 16 and i % 8 != 7 and boardlist[i-7] == 'whitepawn':
-            return False
-    # Knight danger?
+            return True
+
+def KnightDanger(sqr, colour, opp):
     for y in knightMovement(sqr):
         if boardlist[y] == opp+ 'knight':
-            return False
-    # King danger?
+            return True
+
+def KingDanger(sqr, colour, opp):
     for y in kingMovement(sqr):
         if boardlist[y] == opp+ 'king':
-            return False
-    # Rooks, and bishops, and queens, oh my!
+            return True
+
+def BigPieceDanger(sqr, colour, opp):
     for y in rookMovement(sqr, colour):
         if boardlist[y] == opp+ 'rook' or boardlist[y] == opp+ 'queen':
-            return False
+            return True
     for y in bishopMovement(sqr, colour):
         if boardlist[y] == opp+ 'bishop' or boardlist[y] == opp+ 'queen':
-            return False
+            return True
+
+# Determines whether a move can get you killed
+def isSafe(sqr, colour, opp):
+    if PawnDanger(sqr, colour, opp):
+        return False
+    if KnightDanger(sqr, colour, opp):
+        return False
+    if KingDanger(sqr, colour, opp):
+        return False
+    if BigPieceDanger(sqr, colour, opp):
+        return False
     return True
 
 
@@ -582,8 +615,10 @@ def isInCheck(colour):
 def isMated(colour):
     if colour == 'white':
         dn = whitepieces
+        kingsqr = wk.piecelist[0]
     elif colour == 'black':
         dn = blackpieces
+        kingsqr = bk.piecelist[0]
     for y in dn:
         for i in y.piecelist:
             if len(PieceMovement(i)) > 0:
@@ -618,7 +653,7 @@ def PieceMovement(sqr):
         # Cannot castle out of check
         if isInCheck(j.colour) and j.name == 'king' and (move == sqr+2 or move  == sqr-2):
             continue
-        MovePiece(sqr, move)
+        state = MovePiece(sqr, move)
         if not isInCheck(j.colour):
             q.append(move)
         UndoMove(move, sqr)
@@ -679,10 +714,10 @@ def EvaluatePosition(colour):
                 evalu += 0.35
 
         # Passed pawns are GREAT
-        if colour == 'white' and y > 32 and pieceatsqr(y+8) == 'empty':
+        if colour == 'white' and y > 32 and pieceatsqr(y+8) == 0:
             if y <= 54 and boardlist[y+9] != 'blackpawn' and boardlist[y+7] != 'blackpawn':
                 evalu += y/8 - 3
-        if colour == 'black' and y < 31 and pieceatsqr(y-8) == 'empty':
+        if colour == 'black' and y < 31 and pieceatsqr(y-8) == 0:
             if y >= 9 and boardlist[y-9] != 'whitepawn' and boardlist[y-7] != 'whitepawn':
                 evalu += 4 - y/8
 
@@ -734,11 +769,11 @@ def EvaluatePosition(colour):
     for i in xfolder[5].piecelist:
         if i <= 54 and i >= 9:
             j = pieceatsqr(i - 9*u)
-            if (j != 'empty' and j.colour == colour):
+            if (j and j.colour == colour):
                 evalu -= 0.6
         if i <= 55 and i >= 7:
             k = pieceatsqr(i - 7*u)
-        if (k != 'empty' and k.colour == colour):
+        if (k and k.colour == colour):
             evalu -= 0.6
 
     # Make sure bae is safe
@@ -746,20 +781,19 @@ def EvaluatePosition(colour):
         if not(isSafe(y, colour, opp)):
            evalu -= 4.2
 
-    # Get that mate doe -- sketch sketch sketch
-    #if isMated(opp) == 'checkmate':
-     #   evalu += 1000
-    TheWorst = king.piecelist[0]
-    if not isSafe(TheWorst, colour, opp):
+    # Try to corner the king
+    kingpos = king.piecelist[0]
+    kingCanMove = False
+    rekt = False
+    if not isSafe(kingpos, colour, opp):
         rekt = True
         evalu -= 0.5
-        for y in kingMovement(TheWorst):
-            if isSafe(y, colour, opp):
-                rekt = False
-        if rekt:
-            xq = xfolder[1]
-            if len(xq.piecelist) > 0 and isSafe(xq.piecelist[0], colour, opp):
-                evalu -= 500
+    for y in kingMovement(kingpos):
+        if isSafe(y, colour, opp):
+            kingCanMove = True
+    if not(kingCanMove) and rekt:
+        if isMated(colour) == 'checkmate':
+            evalu -= Kval
 
     return evalu
 
@@ -770,8 +804,8 @@ class Position:
     moveend = 0
     
 
-# Returns the ~best~ move for colour
-def FindBest(colour):
+# Returns the "best" move for colour
+def FindBest(colour, first):
     if colour == 'white':
         k = whitepieces
         opp = 'black'
@@ -791,26 +825,50 @@ def FindBest(colour):
                 cur.moveend = end
                 i = pieceatsqr(end)
                 j = pieceatsqr(start)
-                uwotm8 = isInCheck(colour)
+##                uwotm8 = isInCheck(colour)
 
-                MovePiece(start, end)
-                if i == 'empty' and not(isSafe(end, colour, opp)) and isSafe(end, opp, colour):
-                    if not uwotm8:
-                        UndoMove(end, start)
-                        continue
-                cur.evaluation = EvaluatePosition(colour) - EvaluatePosition(opp)
+                state = MovePiece(start, end)
+                if not(i) and not(isSafe(end, colour, opp)) and isSafe(end, opp, colour):
+                        # Don't hang pieces unless you need to
+                        cur.evaluation -= j.value
+                cur.evaluation += EvaluatePosition(colour) - EvaluatePosition(opp)
                 UndoMove(end, start)
 
                 # No kamikaze allowed
-                if i != 'empty' and i.value < j.value:
-                    if not(isSafe(end, colour, opp)) and not uwotm8:
-                        continue
+                if i and i.value < j.value:
+                    if not(isSafe(end, colour, opp)): ##and not uwotm8:
+                        # Unless absolutely necessary
+                        cur.evaluation -= j.value
 
                 if cur.evaluation >= bestsofar.evaluation:
+                    nextbest = bestsofar
                     bestsofar = cur
 
-    print bestsofar.evaluation
-    return bestsofar.movestart, bestsofar.moveend
+    if (first):
+        print bestsofar.evaluation
+        print bestsofar.movestart
+        print bestsofar.moveend
+        state = MovePiece(bestsofar.movestart, bestsofar.moveend)
+        oppeval = FindBest(opp, 0)
+        bestsofar.evaluation -= oppeval
+        UndoMove(bestsofar.moveend, bestsofar.movestart)
+
+        if nextbest.movestart != nextbest.moveend:
+            print nextbest.movestart
+            print nextbest.moveend
+            print ":)"
+            state = MovePiece(nextbest.movestart, nextbest.moveend)
+            oppeval = FindBest(opp, 0)
+            nextbest.evaluation -= oppeval
+            UndoMove(nextbest.moveend, nextbest.movestart)
+
+        if nextbest.evaluation > bestsofar.evaluation:
+            return nextbest.movestart, nextbest.moveend
+        return bestsofar.movestart, bestsofar.moveend
+    else:
+        print bestsofar.movestart
+        print bestsofar.moveend
+        return bestsofar.evaluation
 
 
 # returns the file or rank that colour can use to attack the enemy king
@@ -956,7 +1014,7 @@ def BasicMates(colour):
                 if opp_pos + 14 == y or opp_pos + 18 == y:
                     return kingpos, y
                     
-    return FindBest(colour)
+    return FindBest(colour, 1)
                 
 
 # Finds possible opening moves for black
@@ -1011,45 +1069,5 @@ def OpeningMoves(colour, movenum, randnum):
         if boardlist[27] == 'whitepawn' and boardlist[26] == 'whitepawn':
             if boardlist[62] == 'blackknight':
                 return 62, 45
-    return FindBest(colour)
+    return FindBest(colour, 1)
     
-
-# Anything below this line is utter and complete nonsense
-#----------------------------------------------------------------------
-
-
-# Finds a pos (very slow)
-def FindPos(folder):
-    for y in folder:
-        for start in y.piecelist:
-            moveslist = PieceMovement(start)
-            for end in moveslist:
-                return start, end
-            
-
-# Returns a decent move for colour
-def FindDecent(colour):
-    if colour == 'white':
-        k = whitepieces
-        opp = 'black'
-    elif colour == 'black':
-        k = blackpieces
-        opp = 'white'
-
-    for x in range(len(k)):
-        cur = EvaluatePosition(colour) - EvaluatePosition(opp)
-        pos = Position()
-
-        start, end = FindPos(k)
-        pos.movestart, pos.moveend = start, end
-
-        MovePiece(start, end)
-        pos.evaluation = EvaluatePosition(colour) - EvaluatePosition(opp)
-
-        jkk = isSafe(end, colour)
-        UndoMove(end, start)
-
-        if pos.evaluation > cur and jkk == True:               
-            return pos.movestart, pos.moveend
-    return pos.movestart, pos.moveend
-            
