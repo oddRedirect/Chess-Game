@@ -14,14 +14,10 @@ class Piece:
     name = ""
     picture = ""
     value = 0
-    lastcapture = False
     
     # For Kings only
     cancastleshort = True
     cancastlelong = True
-
-    # For Pawns only
-    justpromoted = False
 
     def loop(self, num):
         for y in self.piecelist:
@@ -49,6 +45,7 @@ class captureState:
     lastcapture = False
     lcsqr = False
     lcprev = False
+    justpromoted = -1
 ##    epcolour = False
 ##    epsqr = False
 ##    ep_prev = False
@@ -208,21 +205,14 @@ def AddPiece(piece, sqr):
 
 
 # Checks if a pawn has made it to the eighth/first rank
-def pawnPromoted():
-    for y in wp.piecelist:
-        s = numtocoord(y)
-        if s[1] == '8':
-            return True
-    for y in bp.piecelist:
-        s = numtocoord(y)
-        if s[1] == '1':
-            return True
+def pawnPromoted(end):
+    s = numtocoord(end)
+    pce = pieceatsqr(end)
+    if s[1] == '8' and pce == wp:
+        return True
+    if s[1] == '1' and pce == bp:
+        return True
     return False
-
-
-# NOTE: Use this class to make and undo a move
-class MoveState:
-    cur_board = boardlist
 
 
 # Moves the piece on start to end
@@ -257,16 +247,16 @@ def MovePiece(start, end):
         ChangeVar(end - 2, start - 1)
 
     # Turn a promoted pawn into a queen
-    if pawnPromoted():
+    if pawnPromoted(end):
         RemovePiece(end)
         if j.colour == 'white':
             AddPiece(wq, end)
         if j.colour == 'black':
             AddPiece(bq, end)
-        j.justpromoted = True
-    else:
-        for y in [wp, bp]:
-            y.justpromoted = False
+        curState.justpromoted = end
+##    else:
+##        for y in [wp, bp]:
+##            y.justpromoted = False
 
    # captureState.ep_prev = captureState.epcolour
     #captureState.epcolour = False
@@ -326,11 +316,18 @@ def UndoMove(end, start):
     elif j.name == 'king' and (start - end) == 2:
         ChangeVar(start - 1, end - 2)
 
-    for y in [wp, bp]:
-        if y.justpromoted:
-            RemovePiece(start)
-            AddPiece(y, start)
-            y.justpromoted = False
+    if curState.justpromoted == end:
+        RemovePiece(start)
+        if j.colur == 'black':
+            AddPiece(bp, start)
+        else:
+            AddPiece(wp, start)
+
+##    for y in [wp, bp]:
+##        if y.justpromoted:
+##            RemovePiece(start)
+##            AddPiece(y, start)
+##            y.justpromoted = False
 
     # More En Passant stuff
     #captureState.epcolour = captureState.ep_prev
@@ -721,7 +718,7 @@ def EvaluatePosition(colour):
                 evalu += 4 - y/8
 
         # Doubled pawns are BAD
-        if boardlist[y + 8] == colour + 'pawn':
+        if y < 56 and boardlist[y + 8] == colour + 'pawn':
             evalu -= 0.5
 
         # Don't let pawns drop off like flies
