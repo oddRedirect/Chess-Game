@@ -1,4 +1,8 @@
-import pygame, sys, ChessEngine, random, time
+import pygame
+import sys
+import ChessEngine
+import random
+import time
 from pygame.locals import *
 
 backcolour = (255, 255, 255)
@@ -10,8 +14,8 @@ blue = (0, 0, 128)
 green = (0, 255, 0)
 
 marginsize = 30
-screenwidth = 1024#640
-screenheight = 640#480
+screenwidth = 1024 # 640 for a smaller screen
+screenheight = 640 # 480 for a smaller screen
 pi = 3.14159
 
 if screenwidth >= screenheight:
@@ -26,6 +30,7 @@ else:
 squaresize = boardsize / 8
 buttonx = screenwidth / 2 - marginsize
 buttony = screenheight - 3*(marginsize / 4)
+undox = buttonx + 100
 
 pygame.init()
 screen = pygame.display.set_mode((screenwidth, screenheight))
@@ -58,7 +63,7 @@ def drawPieces():
             y = ycorner + (7 - sqr / 8)*k
             pieceImage = pygame.image.load(p.picture)
             pieceImage = pygame.transform.smoothscale(pieceImage, (k-4, k-4))
-            screen.blit(pieceImage, (x+2, y+2)) #Gives the illusion of white space
+            screen.blit(pieceImage, (x+2, y+2)) # Gives the illusion of white space
     pygame.display.update()
 
 
@@ -68,11 +73,21 @@ def drawButton():
     y = buttony
     ButtonFont = pygame.font.SysFont("comic sans", 15)
     pygame.draw.rect(screen, boardcolour, (x, y, 75, 12), 2)
-    message = ButtonFont.render("New Game pls", 1, blue)
+    message = ButtonFont.render("NEW GAME", 1, blue)
     screen.blit(message, (x+2, y+2))
 
 
-# Highlights the last move made by the computer
+# Draws the undo button
+def drawUndo():
+    x = undox
+    y = buttony
+    ButtonFont = pygame.font.SysFont("comic sans", 15)
+    pygame.draw.rect(screen, boardcolour, (x, y, 75, 12), 2)
+    message = ButtonFont.render("UNDO", 1, blue)
+    screen.blit(message, (x+2, y+2))
+
+
+# Highlights the specified square
 def drawHighlight(sqr):
     f = sqr % 8
     r = 7 - sqr / 8
@@ -114,6 +129,7 @@ def drawMoves(sqr):
 def drawStuff():
     screen.fill(backcolour)
     drawButton()
+    drawUndo()
     drawBoard()
     drawPieces()
 
@@ -134,11 +150,23 @@ def resetState():
     drawStuff()
 
 
+# Undoes a move !!
+def UndoStuff():
+    ChessEngine.UndoMove()
+    ChessEngine.UndoMove()
+    drawStuff()
+##    if mainState.turn == 'white':
+##        mainState.turn = 'black'
+##    elif mainState.turn == 'black':
+##        mainState.turn = 'white'
+##        mainState.movenumber -= 1
+
+
 # Makes a move for the computer
 def DoCompTurn(turn):
     if ChessEngine.isEndgame():
         start, end = ChessEngine.BasicMates(turn)
-    elif mainState.movenumber <= 5:
+    if mainState.movenumber <= 5:
         start, end = ChessEngine.OpeningMoves(turn, mainState.movenumber, mainState.randmove)
     else:
         start, end = ChessEngine.FindBest(turn, 1)
@@ -166,6 +194,9 @@ def DoPlayerTurn(turn):
                 mousex, mousey = event.pos
                 if buttonx < mousex < buttonx + 75 and buttony < mousey < buttony + 12:
                     resetState()
+                    return
+                elif undox < mousex < undox + 75 and buttony < mousey < buttony + 12:
+                    UndoStuff()
                     return
             if event.type == pygame.MOUSEBUTTONUP:
                 mousex, mousey = event.pos
@@ -204,7 +235,7 @@ def DoPlayerTurn(turn):
                                              
 def main():
     # Variables and such
-    pygame.display.set_caption('Good Luck Loser!')
+    pygame.display.set_caption('Can you beat Shallow Blue in chess?')
     ChessEngine.updateCastlingRights()
     drawStuff()
 
@@ -219,6 +250,8 @@ def main():
                 mousex, mousey = event.pos
                 if buttonx < mousex < buttonx + 75 and buttony < mousey < buttony + 12:
                     resetState()
+                elif undox < mousex < undox + 75 and buttony < mousey < buttony + 12:
+                    UndoStuff()
         # Checks for mate
         if mainState.turn != 'end':
             mate_status = ChessEngine.isMated(mainState.turn)
