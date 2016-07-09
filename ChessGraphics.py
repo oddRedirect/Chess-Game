@@ -166,7 +166,7 @@ def UndoStuff():
 def DoCompTurn(turn):
     if ChessEngine.isEndgame():
         start, end = ChessEngine.BasicMates(turn)
-    if mainState.movenumber <= 5:
+    elif mainState.movenumber <= 5:
         start, end = ChessEngine.OpeningMoves(turn, mainState.movenumber, mainState.randmove)
     else:
         start, end = ChessEngine.FindBest(turn, 1)
@@ -226,11 +226,10 @@ def DoPlayerTurn(turn):
                         elif turn == 'black':
                             folder = ChessEngine.blackpieces
                         for piece in folder:
-                            for i in piece.piecelist:
-                                if msqr == i:
-                                    drawMoves(msqr)
-                                    temp = msqr
-                                    break
+                            if id(piece) == ChessEngine.boardlist[msqr]:
+                                drawMoves(msqr)
+                                temp = msqr
+                                break
 
                                              
 def main():
