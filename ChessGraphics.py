@@ -152,14 +152,10 @@ def resetState():
 
 # Undoes a move !!
 def UndoStuff():
-    ChessEngine.UndoMove()
-    ChessEngine.UndoMove()
-    drawStuff()
-##    if mainState.turn == 'white':
-##        mainState.turn = 'black'
-##    elif mainState.turn == 'black':
-##        mainState.turn = 'white'
-##        mainState.movenumber -= 1
+    if mainState.turn != 'end':
+        ChessEngine.UndoMove()
+        ChessEngine.UndoMove()
+        drawStuff()
 
 
 # Makes a move for the computer

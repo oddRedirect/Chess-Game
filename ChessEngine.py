@@ -29,6 +29,7 @@ class Piece:
 class boardState:
     prevBoard = range(64)
     prevState = False
+    enPassant = False
 
 curState = boardState()
 
@@ -152,7 +153,7 @@ def numtocoord(num):
     q = num % 8
     n = (num / 8) + 1
     m = chr(q + 97)
-    return m + str(n) 
+    return m + str(n)
 
 
 # Returns the piece on square num
@@ -196,6 +197,7 @@ def MovePiece(start, end):
     tempState = boardState()
     tempState.prevBoard = curState.prevBoard
     tempState.prevState = curState.prevState
+    tempState.enPassant = curState.enPassant
 
     curState.prevState = tempState
     curState.prevBoard = tempboardlist
@@ -218,28 +220,21 @@ def MovePiece(start, end):
         if j.colour == 'black':
             boardlist[end] = id(bq)
 
-   # captureState.ep_prev = captureState.epcolour
-    #captureState.epcolour = False
+    curState.enPassant = False
     # Checks if En Passant is valid (work in progress)
-##    if j.name == 'pawn':
-##        s, e = start, end
-##        if s-e == 16 or e-s == 16:
-##            if j.colour == 'black':
-##                captureState.epcolour = 'white'
-##                captureState.epsqr = end+8
-##            if j.colour == 'white':
-##                captureState.epcolour = 'black'
-##                captureState.epsqr = end-8
-##        if s-e == 7 or e-s == 7 or s-e == 9 or e-s == 9:
-##            if m == 'empty':
-##                if j.colour == 'white':
-##                    RemovePiece(e-8)
-##                    captureState.lastcapture = bp
-##                    captureState.lcsqr = e-8
-##                elif j.colour == 'black':
-##                    RemovePiece(e+8)
-##                    captureState.lastcapture = wp
-##                    captureState.lcsqr = e+8
+    if j.name == 'pawn':
+        s, e = start, end
+        if abs(s-e) == 16:
+            if j.colour == 'black':
+                curState.enPassant = e+8
+            if j.colour == 'white':
+                curState.enPassant = e-8
+        if abs(s-e) == 7 or abs(s-e) == 9:
+            if not m:
+                if j.colour == 'white':
+                    boardlist[e-8] = 0
+                elif j.colour == 'black':
+                    boardlist[e+8] = 0
 
     updatepieces()
 
@@ -272,18 +267,10 @@ def UndoMove():
 
     curState.prevBoard = tempState.prevBoard
     curState.prevState = tempState.prevState
-
+    curState.enPassant = tempState.enPassant
+    
     for i in range(64):
         boardlist[i] = tempboardlist[i]
-
-##    for y in [wp, bp]:
-##        if y.justpromoted:
-##            RemovePiece(start)
-##            AddPiece(y, start)
-##            y.justpromoted = False
-
-    # More En Passant stuff
-    #captureState.epcolour = captureState.ep_prev
 
     updatepieces()
 
@@ -445,6 +432,7 @@ def PieceMovementHelp(num):
 
     # Pawn Movement
     elif j.name == 'pawn':
+        ep = curState.enPassant
         if j.colour == 'white':
             u = 1
             startrank = '2'
@@ -463,20 +451,18 @@ def PieceMovementHelp(num):
             if not(s):
                 q.append(i + 8*u)
             z = pieceatsqr(i + 7*u)
-            if z and z.colour != j.colour and m != leftfile:
-                q.append(i + 7*u)
+            if m != leftfile:
+                if (z and z.colour != j.colour) or ep == i + 7*u:
+                    q.append(i + 7*u)
             if i <= 54:
                 y = pieceatsqr(i + 9*u)
-                if y and y.colour != j.colour and m != rightfile:
-                    q.append(i + 9*u)
+                if m != rightfile:
+                    if (y and y.colour != j.colour) or ep == i + 9*u:
+                        q.append(i + 9*u)
         if n == startrank:
             t = pieceatsqr(i + 16*u)
             if not(s) and not(t):
                 q.append(i + 16*u)
-        #if captureState.epcolour == j.colour:
-         #   sqr = captureState.epsqr
-          #  if sqr == i + 9*u or sqr == i + 7*u:
-           #     q.append(sqr)
         
     # Knight Movement
     elif j.name == 'knight':
@@ -505,8 +491,7 @@ def PieceMovementHelp(num):
 
 
 # Danger Functions
-def PawnDanger(sqr, colour):
-    i = sqr
+def PawnDanger(i, colour):
     if colour == 'white':
         if i <= 47 and i % 8 != 7 and boardlist[i+9] == id(bp):
             return True
@@ -573,12 +558,10 @@ def isInCheck(colour):
 # determines whether colour is in checkmate, stalemate or neither
 def isMated(colour):
     if colour == 'white':
-        dn = whitepieces
-        kingsqr = wk.piecelist[0]
+        pieces = whitepieces
     elif colour == 'black':
-        dn = blackpieces
-        kingsqr = bk.piecelist[0]
-    for y in dn:
+        pieces = blackpieces
+    for y in pieces:
         for i in y.piecelist:
             if len(PieceMovement(i)) > 0:
                 return False
@@ -768,45 +751,41 @@ def FindBest(colour, first):
     bestsofar = Position()
     bestsofar.evaluation = -1000
 
-    for start in range(64):
-        for p in pieces:
-            if boardlist[start] == id(p):
-                moveslist = PieceMovement(start)
-                for end in moveslist:
-                    cur = Position()
-                    cur.movestart = start
-                    cur.moveend = end
-                    i = pieceatsqr(end)
-                    j = pieceatsqr(start)
-##                    uwotm8 = isInCheck(colour)
+    for p in pieces:
+        for start in p.piecelist:
+            moveslist = PieceMovement(start)
+            for end in moveslist:
+                cur = Position()
+                cur.movestart = start
+                cur.moveend = end
+                i = pieceatsqr(end)
+                j = pieceatsqr(start)
 
-                    state = MovePiece(start, end)
-                    if not(i) and not(isSafe(end, colour)) and isSafe(end, opp):
-                            # Don't hang pieces unless you need to
-                            cur.evaluation -= j.value
-                    cur.evaluation += EvaluatePosition(colour) - EvaluatePosition(opp)
-                    UndoMove() #UndoMove(end, start)
+                state = MovePiece(start, end)
+                if not(i) and not(isSafe(end, colour)) and isSafe(end, opp):
+                        # Don't hang pieces unless you need to
+                        cur.evaluation -= j.value
+                cur.evaluation += EvaluatePosition(colour) - EvaluatePosition(opp)
+                UndoMove()
 
-                    # No kamikaze allowed
-                    if i and i.value < j.value:
-                        if not(isSafe(end, colour)): ##and not uwotm8:
-                            # Unless absolutely necessary
-                            cur.evaluation -= j.value
+                # No kamikaze allowed
+                if i and i.value < j.value:
+                    if not(isSafe(end, colour)):
+                        # Unless absolutely necessary
+                        cur.evaluation -= j.value
 
-                    if cur.evaluation >= bestsofar.evaluation:
-                        nextbest = bestsofar
-                        bestsofar = cur
-
-    return bestsofar.movestart, bestsofar.moveend   
+                if cur.evaluation >= bestsofar.evaluation:
+                    nextbest = bestsofar
+                    bestsofar = cur   
 
     if (first):
         print bestsofar.evaluation
         print bestsofar.movestart
         print bestsofar.moveend
         state = MovePiece(bestsofar.movestart, bestsofar.moveend)
-        oppeval = FindBest(opp, 1)
+        oppeval = FindBest(opp, 0)
         bestsofar.evaluation -= oppeval
-        UndoMove() #UndoMove(bestsofar.moveend, bestsofar.movestart)
+        UndoMove()
 
         if nextbest.movestart != nextbest.moveend:
             print nextbest.movestart
@@ -815,7 +794,7 @@ def FindBest(colour, first):
             state = MovePiece(nextbest.movestart, nextbest.moveend)
             oppeval = FindBest(opp, 0)
             nextbest.evaluation -= oppeval
-            UndoMove() #UndoMove(nextbest.moveend, nextbest.movestart)
+            UndoMove()
 
         if nextbest.evaluation > bestsofar.evaluation:
             return nextbest.movestart, nextbest.moveend
@@ -1024,5 +1003,5 @@ def OpeningMoves(colour, movenum, randnum):
         if boardlist[27] == id(wp) and boardlist[26] == id(wp):
             if boardlist[62] == id(bn):
                 return 62, 45
-    return FindBest(colour, 0)
+    return FindBest(colour, 1)
     
