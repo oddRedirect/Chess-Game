@@ -37,27 +37,27 @@ curState = boardState()
 # White pieces:
 wk = Piece()
 wk.name = "king"
-wk.picture = "WhiteKing.png"
+wk.picture = "Pieces/WhiteKing.png"
 
 wq = Piece()
 wq.name = "queen"
-wq.picture = "WhiteQueen.png"
+wq.picture = "Pieces/WhiteQueen.png"
 
 wb = Piece()
 wb.name = "bishop"
-wb.picture = "WhiteBishop.png"
+wb.picture = "Pieces/WhiteBishop.png"
 
 wn = Piece()
 wn.name = "knight"
-wn.picture = "WhiteKnight.png"
+wn.picture = "Pieces/WhiteKnight.png"
 
 wr = Piece()
 wr.name = "rook"
-wr.picture = "WhiteRook.png"
+wr.picture = "Pieces/WhiteRook.png"
 
 wp = Piece()
 wp.name = "pawn"
-wp.picture = "WhitePawn.png"
+wp.picture = "Pieces/WhitePawn.png"
 
 whitepieces = [wk, wq, wb, wn, wr, wp]
 for y in whitepieces:
@@ -66,27 +66,27 @@ for y in whitepieces:
 # Black pieces:
 bk = Piece()
 bk.name = "king"
-bk.picture = "BlackKing.png"
+bk.picture = "Pieces/BlackKing.png"
 
 bq = Piece()
 bq.name = "queen"
-bq.picture = "BlackQueen.png"
+bq.picture = "Pieces/BlackQueen.png"
 
 bb = Piece()
 bb.name = "bishop"
-bb.picture = "BlackBishop.png"
+bb.picture = "Pieces/BlackBishop.png"
 
 bn = Piece()
 bn.name = "knight"
-bn.picture = "BlackKnight.png"
+bn.picture = "Pieces/BlackKnight.png"
 
 br = Piece()
 br.name = "rook"
-br.picture = "BlackRook.png"
+br.picture = "Pieces/BlackRook.png"
 
 bp = Piece()
 bp.name = "pawn"
-bp.picture = "BlackPawn.png"
+bp.picture = "Pieces/BlackPawn.png"
 
 blackpieces = [bk, bq, bb, bn, br, bp]
 for y in blackpieces:
