@@ -221,7 +221,7 @@ def MovePiece(start, end):
             boardlist[end] = id(bq)
 
     curState.enPassant = False
-    # Checks if En Passant is valid (work in progress)
+    # Checks if En Passant is valid
     if j.name == 'pawn':
         s, e = start, end
         if abs(s-e) == 16:
@@ -288,16 +288,19 @@ def rookMovement(i, colour):
         x -= 8
     x = i + 8
     while x < 64:
-        if boardlist[x] != 0:
-            if (pieceatsqr(x)).colour != colour:
+        m = pieceatsqr(x)
+        if m:
+            if m.colour != colour:
                    p.append(x)
             break
         p.append(x)
         x += 8
     x = i
     while x % 8 > 0:
-        if boardlist[x-1] != 0:
-            if (pieceatsqr(x-1)).colour != colour:
+        #TODO: Copy this style for all bishop/rook movement
+        m = pieceatsqr(x-1)
+        if m:
+            if m.colour != colour:
                 p.append(x -1)
             break
         p.append(x - 1)
@@ -316,7 +319,7 @@ def rookMovement(i, colour):
 def bishopMovement(i, colour):
     p =[]
     x = i - 9
-    while x % 8 < 7 and x > 0:
+    while x % 8 < 7 and x >= 0:
         if boardlist[x] != 0:
             if (pieceatsqr(x)).colour != colour:
                 p.append(x)
@@ -325,8 +328,9 @@ def bishopMovement(i, colour):
         x -= 9
     x = i + 9
     while x % 8 > 0 and x < 64:
-        if boardlist[x] != 0:
-            if (pieceatsqr(x)).colour != colour:
+        m = pieceatsqr(x)
+        if m:
+            if m.colour != colour:
                 p.append(x)
             break
         p.append(x)
@@ -572,6 +576,7 @@ def isMated(colour):
 
 # Determines whether the game is a draw by insufficient material
 def isDraw():
+    #TODO: Add checking for draw by repitition
     if len(wp.piecelist) > 0 or len(bp.piecelist) > 0:
         return False
     elif len(wq.piecelist) > 0 or len(bq.piecelist) > 0:
@@ -621,115 +626,154 @@ def EvaluatePosition(colour):
     evalu = 0
 
     if colour == 'white':
+        kingSqr = bk.piecelist[0]
         opp = 'black'
-        p, n, b, r, q, k = wp, wn, wb, wr, wq, wk
-        badpawns = bp
-        u = 1
-        
-    elif colour == 'black':
+    else:
+        kingSqr = wk.piecelist[0]
         opp = 'white'
-        p, n, b, r, q, k = bp, bn, bb, br, bq, bk
-        badpawns = wp
-        u = -1
 
-    evalu += Pval * len(p.piecelist)
-    evalu += Nval * len(n.piecelist)
-    evalu += Bval * len(b.piecelist)
-    evalu += Rval * len(r.piecelist)
-    evalu += Qval * len(q.piecelist)
+    for y in whitepieces:
+        evalu += y.value * len(y.piecelist)
+    for y in blackpieces:
+        evalu -= y.value * len(y.piecelist)
 
-    for y in p.piecelist:
+    for y in wp.piecelist:
         # Add incentives for centred pawns
-        if y == 27 or y == 28 or y == 35 or y == 36:
+        if y == 27 or y == 28:
             evalu += 0.4
-
         # Add incentives for making use of outposts for knights
         if y > 24 and y < 48:
-            if boardlist[y+9*u] == id(n) or boardlist[y+7*u] == id(n):
-                evalu += 0.35
-
+            f = y % 8
+            if boardlist[y+9] == id(wn) or boardlist[y+7] == id(wn):
+                if f > 0 and f < 7:
+                    evalu += 0.35
         # Passed pawns are GREAT
-        if colour == 'white' and y > 32 and pieceatsqr(y+8) == 0:
+        #TODO: improve alorithm for determining value of passed pawns
+        if y > 32 and pieceatsqr(y+8) == 0: #colour == 'white' and
             if y <= 54 and boardlist[y+9] != id(bp) and boardlist[y+7] != id(bp):
                 evalu += y/8 - 3
-        if colour == 'black' and y < 31 and pieceatsqr(y-8) == 0:
-            if y >= 9 and boardlist[y-9] != id(wp) and boardlist[y-7] != id(wp):
-                evalu += 4 - y/8
-
         # Doubled pawns are BAD
-        if y < 56 and boardlist[y + 8] == id(p):
+        if y < 56 and boardlist[y + 8] == id(wp):
             evalu -= 0.5
-
         # Don't let pawns drop off like flies
-        if not(isSafe(y, colour)) and isSafe(y, opp):
+        if not(isSafe(y, 'white')) and isSafe(y, 'black'):
             evalu -= 0.4
 
-    for y in n.piecelist:
+    for y in bp.piecelist:
+        if y == 35 or y == 36:
+            evalu -= 0.4
+        if y > 24 and y < 48:
+            f = y % 8
+            if boardlist[y-9] == id(bn) or boardlist[y-7] == id(bn):
+                if f > 0 and f < 7:
+                    evalu -= 0.35
+        if y < 31 and pieceatsqr(y-8) == 0:
+            if y >= 9 and boardlist[y-9] != id(wp) and boardlist[y-7] != id(wp):
+                evalu -= 4 - y/8
+        if y < 56 and boardlist[y + 8] == id(bp):
+            evalu += 0.5
+        if not(isSafe(y, 'black')) and isSafe(y, 'white'):
+            evalu += 0.4
+
+    for y in wn.piecelist:
         # Add incentives for development / attacking w knights
-        if y == 18 or y == 21 or y == 42 or y == 45:
+        if y == 18 or y == 21:
             evalu += 0.3
         # Don't hang your knights
-        if not(isSafe(y, colour)):
+        if not(isSafe(y, 'white')):
             evalu -= 1.2
 
-    for y in b.piecelist:
+    for y in bn.piecelist:
+        if y == 42 or y == 45:
+            evalu -= 0.3
+        if not(isSafe(y, 'black')):
+            evalu += 1.2
+
+    for y in wb.piecelist:
         # Fianchetto
-        if colour == 'white' and (y == 9 or y == 14):
-            evalu += 0.35
-        if colour == 'black' and (y == 49 or y == 54):
+        if y == 9 or y == 14:
             evalu += 0.35
         # Don't hang your bishops
-        if not(isSafe(y, colour)):
+        if not(isSafe(y, 'white')):
             evalu -= 1.3
 
-    for y in r.piecelist:
+    for y in bb.piecelist:
+        if y == 49 or y == 54:
+            evalu += 0.35
+        if not(isSafe(y, 'black')):
+            evalu += 1.3
+
+    for y in wr.piecelist:
         f = y % 8
         # Centralize rooks
         if f == 3 or f == 4:
             evalu += 0.25
         # Rooks behind passed pawns or on open files
         for x in [f+8, f+16, f+24, f+32, f+40, f+48, f+56]:
-            if boardlist[x] == id(p):
+            if boardlist[x] == id(wp):
                 evalu -= 0.5
+                break
+        r = y // 8
+        # Rook on seventh rank is good
+        if r == 7:
+            evalu += 0.35
         # Make sure you don't make a ROOKie mistake
-        if not(isSafe(y, colour)):
+        if not(isSafe(y, 'white')):
             evalu -= 2.1
 
-    # Add incentives for castling
-    hs = k.piecelist[0]
-    if hs == 2 or hs == 6 or hs == 57 or hs == 62:
-        evalu += 0.7
+    for y in br.piecelist:
+        f = y % 8
+        if f == 3 or f == 4:
+            evalu -= 0.25
+        for x in [f+8, f+16, f+24, f+32, f+40, f+48, f+56]:
+            if boardlist[x] == id(wp):
+                evalu += 0.5
+                break
+        r = y // 8
+        # Rook on second rank is good
+        if r == 7:
+            evalu -= 0.35
+        if not(isSafe(y, 'black')):
+            evalu += 2.1
 
-    # Subtract brownie points for pieces attacked by pawns
-    for i in badpawns.piecelist:
-        if i <= 54 and i >= 9:
-            j = pieceatsqr(i - 9*u)
-            if (j and j.colour == colour):
-                evalu -= 0.6
-        if i <= 55 and i >= 7:
-            m = pieceatsqr(i - 7*u)
-            if (m and m.colour == colour):
-                evalu -= 0.6
+    # Add incentives for castling
+    hs = wk.piecelist[0]
+    ls = bk.piecelist[0]
+    if hs == 2 or hs == 6:
+        evalu += 0.7
+    if ls == 57 or ls == 62:
+        evalu -= 0.7
 
     # Make sure bae is safe
-    for y in q.piecelist:
-        if not(isSafe(y, colour)):
-           evalu -= 4.2
+    if colour == 'white':
+        for y in wq.piecelist:
+            if not(isSafe(y, 'white')):
+               evalu -= 4.2
+    elif colour == 'black':
+        for y in bq.piecelist:
+            if not(isSafe(y, 'black')):
+                evalu += 4.2
 
     # Try to corner the king
-    kingpos = k.piecelist[0]
+    kingpos = kingSqr
     kingCanMove = False
     rekt = False
-    if not isSafe(kingpos, colour):
+    if not isSafe(kingpos, opp):
         rekt = True
-        evalu -= 0.5
+        if colour == 'white':
+            evalu += 0.5
+        else:
+            evalu -= 0.5
     for y in kingMovement(kingpos):
-        if isSafe(y, colour):
+        if isSafe(y, opp):
             kingCanMove = True
     if not(kingCanMove) and rekt:
-        if isMated(colour) == 'checkmate':
-            evalu -= Kval
+        if isMated(opp) == 'checkmate':
+            return Kval
 
+    if colour == 'black':
+        evalu *= -1
+        
     return evalu
 
 
@@ -740,7 +784,7 @@ class Position:
     
 
 # Returns the "best" move for colour
-def FindBest(colour, first):
+def FindBest(colour, plies):
     if colour == 'white':
         pieces = whitepieces
         opp = 'black'
@@ -748,8 +792,13 @@ def FindBest(colour, first):
         pieces = blackpieces
         opp = 'white'
 
-    bestsofar = Position()
-    bestsofar.evaluation = -1000
+    topMoves = range(5)
+    for i in range(5):
+        a = topMoves[i] = Position()
+        a.evaluation = -1000
+
+    bestsofar, nextbest = Position(), Position()
+    bestsofar.evaluation, nextbest.evaluation = -1000, -1000
 
     for p in pieces:
         for start in p.piecelist:
@@ -761,11 +810,11 @@ def FindBest(colour, first):
                 i = pieceatsqr(end)
                 j = pieceatsqr(start)
 
-                state = MovePiece(start, end)
+                MovePiece(start, end)
                 if not(i) and not(isSafe(end, colour)) and isSafe(end, opp):
                         # Don't hang pieces unless you need to
                         cur.evaluation -= j.value
-                cur.evaluation += EvaluatePosition(colour) - EvaluatePosition(opp)
+                cur.evaluation += EvaluatePosition(colour)
                 UndoMove()
 
                 # No kamikaze allowed
@@ -775,34 +824,28 @@ def FindBest(colour, first):
                         cur.evaluation -= j.value
 
                 if cur.evaluation >= bestsofar.evaluation:
-                    nextbest = bestsofar
-                    bestsofar = cur   
+                    x = len(topMoves)-1
+                    for i in range(x):
+                        topMoves[i] = topMoves[i+1]
+                    topMoves[x] = bestsofar = cur
 
-    if (first):
-        print bestsofar.evaluation
-        print bestsofar.movestart
-        print bestsofar.moveend
-        state = MovePiece(bestsofar.movestart, bestsofar.moveend)
-        oppeval = FindBest(opp, 0)
-        bestsofar.evaluation -= oppeval
-        UndoMove()
+    if plies > 1:
+        plies -= 1
+        for pos in topMoves:
+            if pos.movestart != pos.moveend:
+                MovePiece(pos.movestart, pos.moveend)
+                oppTop = FindBest(opp, plies)
+                oppeval = oppTop.evaluation
+                pos.evaluation = oppeval*(-1)
+                print oppTop.movestart, "->", oppTop.moveend
+                UndoMove()
 
-        if nextbest.movestart != nextbest.moveend:
-            print nextbest.movestart
-            print nextbest.moveend
-            print ":)"
-            state = MovePiece(nextbest.movestart, nextbest.moveend)
-            oppeval = FindBest(opp, 0)
-            nextbest.evaluation -= oppeval
-            UndoMove()
-
-        if nextbest.evaluation > bestsofar.evaluation:
-            return nextbest.movestart, nextbest.moveend
-        return bestsofar.movestart, bestsofar.moveend
-    else:
-        print bestsofar.movestart
-        print bestsofar.moveend
-        return bestsofar.evaluation
+    for pos in topMoves:
+        print pos.evaluation
+        if pos.evaluation > bestsofar.evaluation:
+            bestsofar = pos
+    return bestsofar
+            
 
 
 # returns the file or rank that colour can use to attack the enemy king
@@ -948,7 +991,8 @@ def BasicMates(colour):
                 if opp_pos + 14 == y or opp_pos + 18 == y:
                     return kingpos, y
                     
-    return FindBest(colour, 1)
+    default = FindBest(colour, 2)
+    return default.movestart, default.moveend
                 
 
 # Finds possible opening moves for black
@@ -1003,5 +1047,6 @@ def OpeningMoves(colour, movenum, randnum):
         if boardlist[27] == id(wp) and boardlist[26] == id(wp):
             if boardlist[62] == id(bn):
                 return 62, 45
-    return FindBest(colour, 1)
+    default = FindBest(colour, 2)
+    return default.movestart, default.moveend
     

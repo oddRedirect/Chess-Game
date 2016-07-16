@@ -165,7 +165,8 @@ def DoCompTurn(turn):
     elif mainState.movenumber <= 5:
         start, end = ChessEngine.OpeningMoves(turn, mainState.movenumber, mainState.randmove)
     else:
-        start, end = ChessEngine.FindBest(turn, 1)
+        k = ChessEngine.FindBest(turn, 2)
+        start, end = k.movestart, k.moveend
     ChessEngine.MovePiece(start, end)
     ChessEngine.updateCastlingRights()
     drawStuff()
