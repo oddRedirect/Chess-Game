@@ -1,4 +1,5 @@
 import sys
+import copy
 
 # Global Constants:
 Pval = 1
@@ -14,10 +15,6 @@ class Piece:
     name = ""
     picture = ""
     value = 0
-    
-    # For Kings only
-    cancastleshort = True
-    cancastlelong = True
 
     def loop(self):
         self.piecelist = []
@@ -28,8 +25,10 @@ class Piece:
 
 class boardState:
     prevBoard = range(64)
-    prevState = False
-    enPassant = False
+    prevState = None
+    enPassant = None
+    # Castling
+    ws, wl, bs, bl = True, True, True, True
 
 curState = boardState()
 
@@ -127,7 +126,7 @@ def resetboard():
     for i in range(48, 56):
         boardlist[i] = id(bp)
     curState.prevBoard = boardlist
-    curState.prevState = False
+    curState.prevState = None
     updatepieces()
 
 resetboard()
@@ -158,13 +157,13 @@ def numtocoord(num):
 
 # Returns the piece on square num
 def pieceatsqr(num):
+    if num > 63 or num < 0:
+        return None
     s = boardlist[num]
-    if s == 0:
-        return False
     for y in allpieces:
         if id(y) == s:
             return y
-    return False
+    return None
 
 
 # Changes the value of the piece on start to end
@@ -194,11 +193,7 @@ def MovePiece(start, end):
     for i in range(64):
         tempboardlist[i] = boardlist[i]
 
-    tempState = boardState()
-    tempState.prevBoard = curState.prevBoard
-    tempState.prevState = curState.prevState
-    tempState.enPassant = curState.enPassant
-
+    tempState = copy.copy(curState)
     curState.prevState = tempState
     curState.prevBoard = tempboardlist
     
@@ -220,7 +215,7 @@ def MovePiece(start, end):
         if j.colour == 'black':
             boardlist[end] = id(bq)
 
-    curState.enPassant = False
+    curState.enPassant = None
     # Checks if En Passant is valid
     if j.name == 'pawn':
         s, e = start, end
@@ -242,36 +237,34 @@ def MovePiece(start, end):
 # Checks if each side can still castle
 def updateCastlingRights():
     if boardlist[4] != id(wk):
-        wk.cancastleshort, wk.cancastlelong = False, False
+        curState.ws, curState.wl = False, False
     if boardlist[60] != id(bk):
-        bk.cancastlshort, bk.cancastlelong = False, False
+        curState.bs, curState.bl = False, False
     if boardlist[0] != id(wr):
-        wk.cancastlelong = False
+        curState.wl = False
     if boardlist[56] != id(br):
-        bk.cancastlelong = False
+        curState.bl = False
     if boardlist[7] != id(wr):
-        wk.cancastleshort = False
+        curState.ws = False
     if boardlist[63] != id(br):
-        bk.cancastleshort = False
+        curState.bs = False
 
 
 # Undoes the previous move made
 def UndoMove():
-    if curState.prevState == False:
+    global curState
+    if curState.prevState == None:
         return False
 
     tempboardlist = curState.prevBoard
 
     tempState = boardState()
     tempState = curState.prevState
-
-    curState.prevBoard = tempState.prevBoard
-    curState.prevState = tempState.prevState
-    curState.enPassant = tempState.enPassant
+    curState = tempState
     
     for i in range(64):
         boardlist[i] = tempboardlist[i]
-
+        
     updatepieces()
 
     
@@ -280,8 +273,9 @@ def rookMovement(i, colour):
     p = []
     x = i - 8
     while x >= 0:
-        if boardlist[x] != 0:
-            if (pieceatsqr(x)).colour != colour:
+        m = pieceatsqr(x)
+        if m:
+            if m.colour != colour:
                 p.append(x)
             break
         p.append(x)
@@ -297,7 +291,6 @@ def rookMovement(i, colour):
         x += 8
     x = i
     while x % 8 > 0:
-        #TODO: Copy this style for all bishop/rook movement
         m = pieceatsqr(x-1)
         if m:
             if m.colour != colour:
@@ -307,8 +300,9 @@ def rookMovement(i, colour):
         x -= 1
     x = i + 1
     while x % 8 > 0:
-        if boardlist[x] != 0:
-            if (pieceatsqr(x)).colour != colour:
+        m = pieceatsqr(x)
+        if m:
+            if m.colour != colour:
                 p.append(x)
             break
         p.append(x)
@@ -320,8 +314,9 @@ def bishopMovement(i, colour):
     p =[]
     x = i - 9
     while x % 8 < 7 and x >= 0:
-        if boardlist[x] != 0:
-            if (pieceatsqr(x)).colour != colour:
+        m = pieceatsqr(x)
+        if m:
+            if m.colour != colour:
                 p.append(x)
             break
         p.append(x)
@@ -337,16 +332,18 @@ def bishopMovement(i, colour):
         x += 9
     x = i - 7
     while x % 8 > 0 and x > 0:
-        if boardlist[x] != 0:
-            if (pieceatsqr(x)).colour != colour:
+        m = pieceatsqr(x)
+        if m:
+            if m.colour != colour:
                 p.append(x)
             break
         p.append(x)
         x -= 7
     x = i + 7
     while x % 8 < 7 and x < 64:
-        if boardlist[x] != 0:
-            if (pieceatsqr(x)).colour != colour:
+        m = pieceatsqr(x)
+        if m:
+            if m.colour != colour:
                 p.append(x)
             break
         p.append(x)
@@ -422,12 +419,12 @@ def PieceMovementHelp(num):
     elif j.name == 'king':
         p = kingMovement(i)
         # Castling
-        if j.cancastleshort and i <= 61:
+        if (j.colour == 'white' and curState.ws) or (j.colour == 'black' and curState.bs):
             a = pieceatsqr(i + 1)
             b = pieceatsqr(i + 2)
             if not a and not b:
                 p.append(i + 2)
-        if j.cancastlelong and i >= 3:
+        if (j.colour == 'white' and curState.wl) or (j.colour == 'black' and curState.bl):
             a = pieceatsqr(i - 1)
             b = pieceatsqr(i - 2)
             c = pieceatsqr(i - 3)
@@ -600,6 +597,7 @@ def PieceMovement(sqr):
         # Cannot castle out of check
         if isInCheck(j.colour) and j.name == 'king' and (move == sqr+2 or move  == sqr-2):
             continue
+        #TODO: Disallow castling through check
         state = MovePiece(sqr, move)
         if not isInCheck(j.colour):
             q.append(move)
