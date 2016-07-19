@@ -1,6 +1,7 @@
 import pygame
 import sys
 import ChessEngine
+import PieceMovement
 import random
 import time
 from pygame.locals import *
@@ -57,7 +58,7 @@ def drawBoard():
 # Draws the pieces to the screen
 def drawPieces():
     k = squaresize
-    for p in ChessEngine.allpieces:
+    for p in PieceMovement.allpieces:
         for sqr in p.piecelist:
             x = xcorner + (sqr % 8)*k
             y = ycorner + (7 - sqr / 8)*k
@@ -113,7 +114,7 @@ def squareClicked(mousex, mousey):
 
 # Draws a circle for each valid move of the piece on sqr
 def drawMoves(sqr):
-    for s in ChessEngine.PieceMovement(sqr):
+    for s in PieceMovement.PieceMovement(sqr):
         f = s % 8
         r = 7 - s//8
         size = boardsize
@@ -146,15 +147,15 @@ def resetState():
     mainState.randmove = random.random()
     mainState.movenumber = 0
     mainState.turn = 'white'
-    ChessEngine.resetgame()
+    PieceMovement.resetgame()
     drawStuff()
 
 
 # Undoes a move !!
 def UndoStuff():
     if mainState.turn != 'end':
-        ChessEngine.UndoMove()
-        ChessEngine.UndoMove()
+        PieceMovement.UndoMove()
+        PieceMovement.UndoMove()
         drawStuff()
 
 
@@ -167,8 +168,8 @@ def DoCompTurn(turn):
     else:
         k = ChessEngine.FindBest(turn, 2)
         start, end = k.movestart, k.moveend
-    ChessEngine.MovePiece(start, end)
-    ChessEngine.updateCastlingRights()
+    PieceMovement.MovePiece(start, end)
+    PieceMovement.updateCastlingRights()
     drawStuff()
     drawHighlight(end)
     if turn == 'white':
@@ -202,10 +203,10 @@ def DoPlayerTurn(turn):
 
                     # Moves a piece if one was selected
                     if temp != -1:
-                        for s in ChessEngine.PieceMovement(temp):
+                        for s in PieceMovement.PieceMovement(temp):
                             if msqr == s:
-                                ChessEngine.MovePiece(temp, msqr)
-                                ChessEngine.updateCastlingRights()
+                                PieceMovement.MovePiece(temp, msqr)
+                                PieceMovement.updateCastlingRights()
                                 drawStuff()
                                 if turn == 'white':
                                     mainState.turn = 'black'
@@ -219,11 +220,11 @@ def DoPlayerTurn(turn):
                     # Displays valid moves
                     else:
                         if turn == 'white':
-                            folder = ChessEngine.whitepieces
+                            folder = PieceMovement.whitepieces
                         elif turn == 'black':
-                            folder = ChessEngine.blackpieces
+                            folder = PieceMovement.blackpieces
                         for piece in folder:
-                            if id(piece) == ChessEngine.boardlist[msqr]:
+                            if id(piece) == PieceMovement.boardlist[msqr]:
                                 drawMoves(msqr)
                                 temp = msqr
                                 break
@@ -232,7 +233,7 @@ def DoPlayerTurn(turn):
 def main():
     # Variables and such
     pygame.display.set_caption('Can you beat Shallow Blue in chess?')
-    ChessEngine.updateCastlingRights()
+    PieceMovement.updateCastlingRights()
     drawStuff()
 
     # Main game loop:
@@ -250,7 +251,7 @@ def main():
                     UndoStuff()
         # Checks for mate
         if mainState.turn != 'end':
-            mate_status = ChessEngine.isMated(mainState.turn)
+            mate_status = PieceMovement.isMated(mainState.turn)
         if mate_status:
             if mate_status == 'checkmate':
                 message = MessageFont.render("CHECKMATE!", 1, blue)
@@ -260,7 +261,7 @@ def main():
             pygame.display.update()
             mainState.turn = 'end'
         # Checks for draw
-        if ChessEngine.isDraw():
+        if PieceMovement.isDraw():
             message = MessageFont.render("INSUFFICIENT MATERIAL", 1, blue)
             screen.blit(message, (screenwidth / 2 - 2*marginsize, marginsize / 2))
             pygame.display.update()
