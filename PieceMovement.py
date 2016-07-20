@@ -415,13 +415,16 @@ def PieceMovementHelp(num):
             a = pieceatsqr(i + 1)
             b = pieceatsqr(i + 2)
             if not a and not b:
-                p.append(i + 2)
+                # Cannot castle through check
+                if isSafe(i+1, j.colour) and isSafe(i+2, j.colour):
+                    p.append(i + 2)
         if (j.colour == 'white' and curState.wl) or (j.colour == 'black' and curState.bl):
             a = pieceatsqr(i - 1)
             b = pieceatsqr(i - 2)
             c = pieceatsqr(i - 3)
             if not(a) and not(b) and not(c):
-                p.append(i - 2)    
+                if isSafe(i-1, j.colour) and isSafe(i-2, j.colour) and isSafe(i-3, j.colour):
+                    p.append(i - 2)    
 
     # Pawn Movement
     elif j.name == 'pawn':
@@ -587,9 +590,8 @@ def PieceMovement(sqr):
     q = []
     for move in PieceMovementHelp(sqr):
         # Cannot castle out of check
-        if isInCheck(j.colour) and j.name == 'king' and (move == sqr+2 or move  == sqr-2):
+        if j.name == 'king' and abs(move-sqr) == 2 and isInCheck(j.colour):
             continue
-        #TODO: Disallow castling through check
         state = MovePiece(sqr, move)
         if not isInCheck(j.colour):
             q.append(move)
