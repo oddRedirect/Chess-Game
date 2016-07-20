@@ -1,5 +1,6 @@
 import sys
 import PieceMovement as pm
+from PieceMovement import PieceMovement, isSafe
 
 # Global Constants:
 Pval = 1
@@ -9,7 +10,7 @@ Rval = 5
 Qval = 9
 Kval = 100
 
-# Slap some values on errthing
+# Assign a value to each piece
 for y in pm.allpieces:
     if y.name == 'pawn':
         y.value = Pval
@@ -27,12 +28,6 @@ wk, wq, wb, wn, wr, wp = pm.wk, pm.wq, pm.wb, pm.wn, pm.wr, pm.wp
 bk, bq, bb, bn, br, bp = pm.bk, pm.bq, pm.bb, pm.bn, pm.br, pm.bp
 
 boardlist = pm.boardlist
-
-def PieceMovement(c):
-    return pm.PieceMovement(c)
-
-def isSafe(s, c):
-    return pm.isSafe(s, c)
 
 
 # Gives a numerical value for how good colour's position is
@@ -63,7 +58,7 @@ def EvaluatePosition(colour):
                     evalu += 0.35
         # Passed pawns are GREAT
         #TODO: improve alorithm for determining value of passed pawns
-        if y > 32 and pm.pieceatsqr(y+8) == 0: #colour == 'white' and
+        if y > 32 and pm.pieceatsqr(y+8) == 0:
             if y <= 54 and boardlist[y+9] != id(bp) and boardlist[y+7] != id(bp):
                 evalu += y/8 - 3
         # Doubled pawns are BAD
@@ -127,7 +122,7 @@ def EvaluatePosition(colour):
             if boardlist[x] == id(wp):
                 evalu -= 0.5
                 break
-        r = y // 8
+        r = y/8
         # Rook on seventh rank is good
         if r == 7:
             evalu += 0.35
@@ -143,7 +138,7 @@ def EvaluatePosition(colour):
             if boardlist[x] == id(wp):
                 evalu += 0.5
                 break
-        r = y // 8
+        r = y/8
         # Rook on second rank is good
         if r == 7:
             evalu -= 0.35
@@ -182,7 +177,7 @@ def EvaluatePosition(colour):
         if isSafe(y, opp):
             kingCanMove = True
     if not(kingCanMove) and rekt:
-        if isMated(opp) == 'checkmate':
+        if pm.isMated(opp) == 'checkmate':
             return Kval
 
     if colour == 'black':
@@ -264,27 +259,27 @@ def FindBest(colour, plies):
 
 # returns the file or rank that colour can use to attack the enemy king
 def hasOpposition(kingpos, opp_pos):
-    a, af, ar = kingpos, kingpos%8, kingpos/8
-    b, bf, br = opp_pos, opp_pos%8, opp_pos/8
-    if a == b + 2 or b == a + 2:
-        f = b % 8
-        return [f, f+8, f+16, f+24, f+32, f+40, f+48, f+56]
-    elif a == b + 16 or b == a + 16 or (bf == 0 and a == b+17):
-        r = (b / 8) * 8
-        return [r, r+1, r+2, r+3, r+4, r+5, r+6, r+7]
+    a, b = kingpos, opp_pos
+    #TODO: check opposition for corners (if b in corners...)
+    corners = [0, 7, 56, 63]
+    if a/8 == b/8 and abs(a-b) == 2:
+        return (b%8, "file") 
+    elif a%8 == b%8 and abs(a-b) == 16:
+        return ((b/8) * 8, "rank")
     return False
 
-# Opposes the enemy king (returns the square to move ur king to)
+# Opposes the enemy king (returns the square to move the king to)
 def getOpposition(kingpos, opp_pos):
     b = opp_pos
-    for y in PieceMovement(kingpos):
-        if y == b + 16 or b == y + 16 or (y/8 == b/8 and (y == b + 2 or b == y + 2)):
+    kingMoves = PieceMovement(kingpos)
+    for y in kingMoves:
+        if abs(y-b) == 16 or (y/8 == b/8 and abs(y-b) == 2):
             return y
-    for y in PieceMovement(kingpos):
-        if y == b + 32 or b == y + 32 or (y/8 == b/8 and (y == b + 4 or b == y + 4)):
+    for y in kingMoves:
+        if abs(y-b) == 32 or (y/8 == b/8 and abs(y-b) == 4):
             return y
-    for y in PieceMovement(kingpos):
-        if y == b + 48 or b == y + 48 or (y/8 == b/8 and (y == b + 6 or b == y + 6)):
+    for y in kingMoves:
+        if abs(y-b) == 48 or (y/8 == b/8 and abs(y-b) == 6):
             return y
     return False
 
@@ -304,19 +299,13 @@ def isEndgame():
 # Returns a move to maybe get closer to destroying the player
 def BasicMates(colour):
     if colour == 'white':
-        opp = 'black'
-        king = wk.piecelist
+        kingpos, opp_pos = wk.piecelist[0], bk.piecelist[0]
         rooks = wr.piecelist + wq.piecelist
         queen = wq.piecelist
-        xking = bk.piecelist
     elif colour == 'black':
-        opp = 'white'
-        king = bk.piecelist
+        kingpos, opp_pos = bk.piecelist[0], wk.piecelist[0]
         rooks = br.piecelist + bq.piecelist
         queen = bq.piecelist
-        xking = wk.piecelist
-    kingpos = king[0]
-    opp_pos = xking[0]
     
     # 2 Rook Checkmate
     if len(rooks) >= 2:
@@ -326,10 +315,9 @@ def BasicMates(colour):
             for x in PieceMovement(y):
                 if not(isSafe(y, colour)) and isSafe(x, colour):
                     if y / 8 == kr + 1:
-                        if x / 8 == kr+1 and x%8 != kf+2 and x%8 != kf-2:
-                            return y, x
-                    else:
-                        return y, x
+                        if x / 8 != kr+1 or x%8 == kf+2 or x%8 == kf-2:
+                            continue
+                    return y, x
         if rooks[0] / 8 == kr + 1 or rooks[1] / 8 == kr + 1:
             for y in rooks:
                 for x in PieceMovement(y):
@@ -344,29 +332,30 @@ def BasicMates(colour):
 
     # King and Queen Checkmate
     elif len(queen) > 0:
-        k = hasOpposition(kingpos, opp_pos)
+        start = queen[0]
+        k, opr = hasOpposition(kingpos, opp_pos)
         if k:
-            start = queen[0]
-            for y in k:
-                for end in PieceMovement(start):
-                    if end == y and isSafe(y, colour):
-                        return start, end
+            for end in PieceMovement(start):
+                if opr == "file" and end%8 == k and isSafe(y, colour):
+                    return start, end
+                elif opr == "rank" and end/8 == k and isSafe(y, colour):
+                    return start , end
         elif opp_pos + 15 == kingpos or opp_pos + 17 == kingpos:
-            for y in PieceMovement(queen[0]):
+            for y in PieceMovement(start):
                 if y == opp_pos + 8:
-                    return queen[0], y
+                    return start, y
         elif opp_pos - 15 == kingpos or opp_pos - 17 == kingpos:
-            for y in PieceMovement(queen[0]):
+            for y in PieceMovement(start):
                 if y == opp_pos - 8:
-                    return queen[0], y
+                    return start, y
         elif opp_pos - 10 == kingpos or opp_pos + 6 == kingpos:
-            for y in PieceMovement(queen[0]):
+            for y in PieceMovement(start):
                 if y == opp_pos - 1:
-                    return queen[0], y
+                    return start, y
         elif opp_pos - 6 == kingpos or opp_pos + 10 == kingpos:
-            for y in PieceMovement(queen[0]):
+            for y in PieceMovement(start):
                 if y == opp_pos + 1:
-                    return queen[0], y
+                    return start, y
         else:
             v = getOpposition(kingpos, opp_pos)
             if v:
@@ -374,24 +363,24 @@ def BasicMates(colour):
 
     # King and Rook Checkmate
     elif len(rooks) == 1:
-        k = hasOpposition(kingpos, opp_pos)
+        k, opr = hasOpposition(kingpos, opp_pos)
         kf = opp_pos % 8
         kr = opp_pos / 8
         if k:
             start = rooks[0]
-            for y in k:
-                for end in PieceMovement(start):
-                    if end == y and isSafe(y, colour):
-                        return start, end
+            for end in PieceMovement(start):
+                if opr == "file" and end%8 == k and isSafe(y, colour):
+                    return start, end
+                elif opr == "rank" and end/8 == k and isSafe(y, colour):
+                    return start , end
         elif rooks[0] / 8 != kr + 1 or not(isSafe(rooks[0], colour)):
             start = rooks[0]
             for y in PieceMovement(start):
                 if y/8 == kr+1 and isSafe(y, colour):
                     if start / 8 == kr + 1:
-                        if y / 8 == kr+1 and y%8 != kf+2 and y%8 != kf-2:
-                            return start, y
-                    else:
-                        return start, y
+                        if y / 8 != kr+1 or y%8 == kf+2 or y%8 == kf-2:
+                            continue
+                    return start, y
         elif kingpos / 8 > kr + 2:
             for y in PieceMovement(kingpos):
                 if y == kingpos - 8:
