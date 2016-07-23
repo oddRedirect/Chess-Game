@@ -127,10 +127,10 @@ resetboard()
 # Resets the board and initializes some values
 def resetgame():
     resetboard()
-    wk.cancastleshort = True
-    wk.cancastlelong = True
-    bk.cancastleshort = True
-    bk.cancastllong = True
+    curState.ws = True
+    curState.wl = True
+    curState.bs = True
+    curState.bl = True
 
 
 # Converts sqr to a number for ease of calculation (sqr is a string coord)
@@ -181,18 +181,13 @@ def MovePiece(start, end):
     j = pieceatsqr(start)
     m = pieceatsqr(end)
 
-    tempboardlist = range(64)
-    for i in range(64):
-        tempboardlist[i] = boardlist[i]
-
-    tempState = copy.copy(curState)
-    curState.prevState = tempState
-    curState.prevBoard = tempboardlist
+    curState.prevState = copy.copy(curState)
+    curState.prevBoard = copy.copy(boardlist)
     
     if not j or (m and j.colour == m.colour):
         return 'Invalid move'
-    else:
-        ChangeVar(start, end)
+
+    ChangeVar(start, end)
 
     # Move the rook if the king castled
     if j.name == 'king' and (end - start) == 2:
@@ -245,17 +240,12 @@ def updateCastlingRights():
 # Undoes the previous move made
 def UndoMove():
     global curState
+    global boardlist
     if curState.prevState == None:
         return False
-
-    tempboardlist = curState.prevBoard
-
-    tempState = boardState()
-    tempState = curState.prevState
-    curState = tempState
     
-    for i in range(64):
-        boardlist[i] = tempboardlist[i]
+    boardlist = curState.prevBoard
+    curState = curState.prevState
         
     updatepieces()
 
@@ -265,36 +255,36 @@ def rookMovement(i, colour):
     p = []
     x = i - 8
     while x >= 0:
-        m = pieceatsqr(x)
-        if m:
-            if m.colour != colour:
+        if boardlist[x] != 0:
+            m = pieceatsqr(x)
+            if m and m.colour != colour:
                 p.append(x)
             break
         p.append(x)
         x -= 8
     x = i + 8
     while x < 64:
-        m = pieceatsqr(x)
-        if m:
-            if m.colour != colour:
-                   p.append(x)
+        if boardlist[x] != 0:
+            m = pieceatsqr(x)
+            if m and m.colour != colour:
+                p.append(x)
             break
         p.append(x)
         x += 8
     x = i
     while x % 8 > 0:
-        m = pieceatsqr(x-1)
-        if m:
-            if m.colour != colour:
-                p.append(x -1)
+        if boardlist[x-1] != 0:
+            m = pieceatsqr(x-1)
+            if m and m.colour != colour:
+                p.append(x-1)
             break
-        p.append(x - 1)
+        p.append(x-1)
         x -= 1
     x = i + 1
     while x % 8 > 0:
-        m = pieceatsqr(x)
-        if m:
-            if m.colour != colour:
+        if boardlist[x] != 0:
+            m = pieceatsqr(x)
+            if m and m.colour != colour:
                 p.append(x)
             break
         p.append(x)
@@ -306,36 +296,36 @@ def bishopMovement(i, colour):
     p =[]
     x = i - 9
     while x % 8 < 7 and x >= 0:
-        m = pieceatsqr(x)
-        if m:
-            if m.colour != colour:
+        if boardlist[x] != 0:
+            m = pieceatsqr(x)
+            if m and m.colour != colour:
                 p.append(x)
             break
         p.append(x)
         x -= 9
     x = i + 9
     while x % 8 > 0 and x < 64:
-        m = pieceatsqr(x)
-        if m:
-            if m.colour != colour:
+        if boardlist[x] != 0:
+            m = pieceatsqr(x)
+            if m and m.colour != colour:
                 p.append(x)
             break
         p.append(x)
         x += 9
     x = i - 7
     while x % 8 > 0 and x > 0:
-        m = pieceatsqr(x)
-        if m:
-            if m.colour != colour:
+        if boardlist[x] != 0:
+            m = pieceatsqr(x)
+            if m and m.colour != colour:
                 p.append(x)
             break
         p.append(x)
         x -= 7
     x = i + 7
     while x % 8 < 7 and x < 64:
-        m = pieceatsqr(x)
-        if m:
-            if m.colour != colour:
+        if boardlist[x] != 0:
+            m = pieceatsqr(x)
+            if m and m.colour != colour:
                 p.append(x)
             break
         p.append(x)
@@ -394,11 +384,10 @@ def knightMovement(i):
             p.append(i + 10)
     return p
 
-# Returns a list of squares that are valid moves for the piece on num
-def PieceMovementHelp(num):
-    i = num
-    j = pieceatsqr(num)
-    sqr = numtocoord(num)
+# Returns a list of squares that are valid moves for the piece on square i
+def PieceMovementHelp(i):
+    j = pieceatsqr(i)
+    sqr = numtocoord(i)
     m = sqr[0]
     n = sqr[1]
     p = []
@@ -432,29 +421,25 @@ def PieceMovementHelp(num):
         if j.colour == 'white':
             u = 1
             startrank = '2'
-            endrank = '8'
             leftfile = 'a'
             rightfile = 'h'
         elif j.colour == 'black':
             u = -1
             startrank = '7'
-            endrank = '1'
             leftfile = 'h'
             rightfile = 'a'
         # u is used to signify direction of pawn movement
-        if n != endrank:
-            s = pieceatsqr(i + 8*u)
-            if not(s):
-                q.append(i + 8*u)
-            z = pieceatsqr(i + 7*u)
-            if m != leftfile:
-                if (z and z.colour != j.colour) or ep == i + 7*u:
-                    q.append(i + 7*u)
-            if i <= 54:
-                y = pieceatsqr(i + 9*u)
-                if m != rightfile:
-                    if (y and y.colour != j.colour) or ep == i + 9*u:
-                        q.append(i + 9*u)
+        s = pieceatsqr(i + 8*u)
+        if not(s):
+            q.append(i + 8*u)
+        z = pieceatsqr(i + 7*u)
+        if m != leftfile:
+            if (z and z.colour != j.colour) or ep == i + 7*u:
+                q.append(i + 7*u)
+        y = pieceatsqr(i + 9*u)
+        if m != rightfile:
+            if (y and y.colour != j.colour) or ep == i + 9*u:
+                q.append(i + 9*u)
         if n == startrank:
             t = pieceatsqr(i + 16*u)
             if not(s) and not(t):
@@ -592,7 +577,7 @@ def PieceMovement(sqr):
         # Cannot castle out of check
         if j.name == 'king' and abs(move-sqr) == 2 and isInCheck(j.colour):
             continue
-        state = MovePiece(sqr, move)
+        MovePiece(sqr, move)
         if not isInCheck(j.colour):
             q.append(move)
         UndoMove()
