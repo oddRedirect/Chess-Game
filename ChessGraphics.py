@@ -253,16 +253,14 @@ def main():
         if mainState.turn != 'end':
             mate_status = PieceMovement.isMated(mainState.turn)
         if mate_status:
-            if mate_status == 'checkmate':
-                message = MessageFont.render("CHECKMATE!", 1, blue)
-            elif mate_status == 'stalemate':
-                message = MessageFont.render("STALEMATE!", 1, blue)
+            message = MessageFont.render(mate_status + "!", 1, blue)
             screen.blit(message, (screenwidth / 2 - marginsize, marginsize /2))
             pygame.display.update()
             mainState.turn = 'end'
         # Checks for draw
-        if PieceMovement.isDraw():
-            message = MessageFont.render("INSUFFICIENT MATERIAL", 1, blue)
+        draw_status = PieceMovement.isDraw() 
+        if draw_status:
+            message = MessageFont.render(draw_status, 1, blue)
             screen.blit(message, (screenwidth / 2 - 2*marginsize, marginsize / 2))
             pygame.display.update()
             mainState.turn = 'end'

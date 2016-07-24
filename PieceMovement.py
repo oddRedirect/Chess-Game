@@ -16,7 +16,7 @@ class Piece:
 
 
 class boardState:
-    prevBoard = range(64)
+    prevBoard = None
     prevState = None
     enPassant = None
     # Castling
@@ -117,8 +117,6 @@ def resetboard():
     boardlist[63], boardlist[56] = id(br), id(br)
     for i in range(48, 56):
         boardlist[i] = id(bp)
-    curState.prevBoard = boardlist
-    curState.prevState = None
     updatepieces()
 
 resetboard()
@@ -126,11 +124,9 @@ resetboard()
 
 # Resets the board and initializes some values
 def resetgame():
+    global curState
     resetboard()
-    curState.ws = True
-    curState.wl = True
-    curState.bs = True
-    curState.bl = True
+    curState = boardState()
 
 
 # Converts sqr to a number for ease of calculation (sqr is a string coord)
@@ -242,7 +238,7 @@ def UndoMove():
     global curState
     global boardlist
     if curState.prevState == None:
-        return False
+        return
     
     boardlist = curState.prevBoard
     curState = curState.prevState
@@ -385,14 +381,13 @@ def knightMovement(i):
     return p
 
 # Returns a list of squares that are valid moves for the piece on square i
-def PieceMovementHelp(i):
+def PieceMovement(i):
     j = pieceatsqr(i)
     sqr = numtocoord(i)
     m = sqr[0]
     n = sqr[1]
     p = []
-    q = []
-
+    
     if not j:
         return 'Invalid start square'
 
@@ -419,31 +414,28 @@ def PieceMovementHelp(i):
     elif j.name == 'pawn':
         ep = curState.enPassant
         if j.colour == 'white':
-            u = 1
+            up1, up2 = i+8, i+16
+            xleft, xright = i+7, i+9
             startrank = '2'
-            leftfile = 'a'
-            rightfile = 'h'
         elif j.colour == 'black':
-            u = -1
+            up1, up2 = i-8, i-16
+            xleft, xright = i-9, i-7
             startrank = '7'
-            leftfile = 'h'
-            rightfile = 'a'
-        # u is used to signify direction of pawn movement
-        s = pieceatsqr(i + 8*u)
+        s = pieceatsqr(up1)
         if not(s):
-            q.append(i + 8*u)
-        z = pieceatsqr(i + 7*u)
-        if m != leftfile:
-            if (z and z.colour != j.colour) or ep == i + 7*u:
-                q.append(i + 7*u)
-        y = pieceatsqr(i + 9*u)
-        if m != rightfile:
-            if (y and y.colour != j.colour) or ep == i + 9*u:
-                q.append(i + 9*u)
+            p.append(up1)
+        if m != 'a':
+            z = pieceatsqr(xleft)
+            if (z and z.colour != j.colour) or ep == xleft:
+                p.append(xleft)
+        if m != 'h':
+            y = pieceatsqr(xright)
+            if (y and y.colour != j.colour) or ep == xright:
+                p.append(xright)
         if n == startrank:
-            t = pieceatsqr(i + 16*u)
+            t = pieceatsqr(up2)
             if not(s) and not(t):
-                q.append(i + 16*u)
+                p.append(up2)
         
     # Knight Movement
     elif j.name == 'knight':
@@ -451,24 +443,32 @@ def PieceMovementHelp(i):
 
     # Rook Movement
     elif j.name == 'rook':
-        q = rookMovement(i, j.colour)
+        p = rookMovement(i, j.colour)
 
     # Bishop Movement
     elif j.name == 'bishop':
-        q = bishopMovement(i, j.colour)
+        p = bishopMovement(i, j.colour)
 
     # Queen Movement
     elif j.name == 'queen':
-        q = rookMovement(i, j.colour) + bishopMovement(i, j.colour)
+        p = rookMovement(i, j.colour) + bishopMovement(i, j.colour)
 
-    # Make sure we don't have friendly fire (from the king or knight)
-    for x in p:
+    def MoveFilterer(x):
+        # Make sure we don't have friendly fire (from the king or knight)
         if boardlist[x] != 0 and (pieceatsqr(x)).colour == j.colour:
-            continue
-        else:
-            q.append(x)
+            return False
+        # Cannot castle out of check
+        if j.name == 'king' and abs(x-i) == 2 and isInCheck(j.colour):
+            return False
+        legalMove = True
+        MovePiece(i, x)
+        # Cannot move into check
+        if isInCheck(j.colour):
+           legalMove = False 
+        UndoMove()
+        return legalMove
 
-    return q
+    return filter(MoveFilterer, p)
 
 
 # Danger Functions
@@ -547,13 +547,31 @@ def isMated(colour):
             if len(PieceMovement(i)) > 0:
                 return False
     if isInCheck(colour):
-        return 'checkmate'
-    return 'stalemate'
+        return 'CHECKMATE'
+    return 'STALEMATE'
+
+
+# Returns the boardState i states ago
+def prev(i, state):
+    if i == 0 or not(state):
+        return None
+    if i <= 1:
+        return state.prevState
+    return prev(i-1, state.prevState)
+
+
+# Determines whether the current position has been consecutively repeated three times
+def isRepitition():
+    tempState = prev(3, curState)
+    tempState2 = prev(4, tempState)
+    if tempState and tempState2:
+        if boardlist == tempState.prevBoard and boardlist == tempState2.prevBoard:
+            return True
+    return False
 
 
 # Determines whether the game is a draw by insufficient material
-def isDraw():
-    #TODO: Add checking for draw by repitition
+def isInsufficient():
     if len(wp.piecelist) > 0 or len(bp.piecelist) > 0:
         return False
     elif len(wq.piecelist) > 0 or len(bq.piecelist) > 0:
@@ -568,17 +586,11 @@ def isDraw():
         return False
     return True
 
-
-# (see PieceMovementHelper)
-def PieceMovement(sqr):
-    j = pieceatsqr(sqr)
-    q = []
-    for move in PieceMovementHelp(sqr):
-        # Cannot castle out of check
-        if j.name == 'king' and abs(move-sqr) == 2 and isInCheck(j.colour):
-            continue
-        MovePiece(sqr, move)
-        if not isInCheck(j.colour):
-            q.append(move)
-        UndoMove()
-    return q
+# Checks whether the game is a draw
+def isDraw():
+    if isInsufficient():
+        return "INSUFFICIENT MATERIAL"
+    if isRepitition():
+        return "DRAW BY REPITITION"
+    return False
+    

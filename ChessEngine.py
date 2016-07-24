@@ -177,7 +177,7 @@ def EvaluatePosition(colour):
         if isSafe(y, opp):
             kingCanMove = True
     if not(kingCanMove) and rekt:
-        if pm.isMated(opp) == 'checkmate':
+        if pm.isMated(opp) == 'CHECKMATE':
             return Kval
 
     if colour == 'black':
@@ -266,7 +266,7 @@ def hasOpposition(kingpos, opp_pos):
         return (b%8, "file") 
     elif a%8 == b%8 and abs(a-b) == 16:
         return ((b/8) * 8, "rank")
-    return False
+    return False, ""
 
 # Opposes the enemy king (returns the square to move the king to)
 def getOpposition(kingpos, opp_pos):
