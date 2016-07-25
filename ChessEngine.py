@@ -1,6 +1,6 @@
 import sys
 import PieceMovement as pm
-from PieceMovement import PieceMovement, isSafe
+from PieceMovement import PieceMovement, isSafe, isInCheck
 
 # Global Constants:
 Pval = 1
@@ -27,19 +27,10 @@ for y in pm.allpieces:
 wk, wq, wb, wn, wr, wp = pm.wk, pm.wq, pm.wb, pm.wn, pm.wr, pm.wp
 bk, bq, bb, bn, br, bp = pm.bk, pm.bq, pm.bb, pm.bn, pm.br, pm.bp
 
-boardlist = pm.boardlist
-
 
 # Gives a numerical value for how good colour's position is
 def EvaluatePosition(colour):
     evalu = 0
-
-    if colour == 'white':
-        kingSqr = bk.piecelist[0]
-        opp = 'black'
-    else:
-        kingSqr = wk.piecelist[0]
-        opp = 'white'
 
     for y in pm.whitepieces:
         evalu += y.value * len(y.piecelist)
@@ -53,16 +44,16 @@ def EvaluatePosition(colour):
         # Add incentives for making use of outposts for knights
         if y > 24 and y < 48:
             f = y % 8
-            if boardlist[y+9] == id(wn) or boardlist[y+7] == id(wn):
+            if pm.boardlist[y+9] == id(wn) or pm.boardlist[y+7] == id(wn):
                 if f > 0 and f < 7:
                     evalu += 0.35
         # Passed pawns are GREAT
         #TODO: improve alorithm for determining value of passed pawns
         if y > 32 and pm.pieceatsqr(y+8) == 0:
-            if y <= 54 and boardlist[y+9] != id(bp) and boardlist[y+7] != id(bp):
+            if y <= 54 and pm.boardlist[y+9] != id(bp) and pm.boardlist[y+7] != id(bp):
                 evalu += y/8 - 3
         # Doubled pawns are BAD
-        if y < 56 and boardlist[y + 8] == id(wp):
+        if y < 56 and pm.boardlist[y + 8] == id(wp):
             evalu -= 0.5
         # Don't let pawns drop off like flies
         if not(isSafe(y, 'white')) and isSafe(y, 'black'):
@@ -73,19 +64,19 @@ def EvaluatePosition(colour):
             evalu -= 0.4
         if y > 24 and y < 48:
             f = y % 8
-            if boardlist[y-9] == id(bn) or boardlist[y-7] == id(bn):
+            if pm.boardlist[y-9] == id(bn) or pm.boardlist[y-7] == id(bn):
                 if f > 0 and f < 7:
                     evalu -= 0.35
         if y < 31 and pm.pieceatsqr(y-8) == 0:
-            if y >= 9 and boardlist[y-9] != id(wp) and boardlist[y-7] != id(wp):
+            if y >= 9 and pm.boardlist[y-9] != id(wp) and pm.boardlist[y-7] != id(wp):
                 evalu -= 4 - y/8
-        if y < 56 and boardlist[y + 8] == id(bp):
+        if y < 56 and pm.boardlist[y + 8] == id(bp):
             evalu += 0.5
         if not(isSafe(y, 'black')) and isSafe(y, 'white'):
             evalu += 0.4
 
     for y in wn.piecelist:
-        # Add incentives for development / attacking w knights
+        # Add incentives for development
         if y == 18 or y == 21:
             evalu += 0.3
         # Don't hang your knights
@@ -117,14 +108,14 @@ def EvaluatePosition(colour):
         # Centralize rooks
         if f == 3 or f == 4:
             evalu += 0.25
-        # Rooks behind passed pawns or on open files
-        for x in [f+8, f+16, f+24, f+32, f+40, f+48, f+56]:
-            if boardlist[x] == id(wp):
+        # Rooks on open/semi-open files
+        for x in [f+8, f+16, f+24, f+32, f+40, f+48]:
+            if pm.boardlist[x] == id(wp):
                 evalu -= 0.5
                 break
         r = y/8
         # Rook on seventh rank is good
-        if r == 7:
+        if r == 6:
             evalu += 0.35
         # Make sure you don't make a ROOKie mistake
         if not(isSafe(y, 'white')):
@@ -134,13 +125,13 @@ def EvaluatePosition(colour):
         f = y % 8
         if f == 3 or f == 4:
             evalu -= 0.25
-        for x in [f+8, f+16, f+24, f+32, f+40, f+48, f+56]:
-            if boardlist[x] == id(wp):
+        for x in [f+8, f+16, f+24, f+32, f+40, f+48]:
+            if pm.boardlist[x] == id(bp):
                 evalu += 0.5
                 break
         r = y/8
         # Rook on second rank is good
-        if r == 7:
+        if r == 1:
             evalu -= 0.35
         if not(isSafe(y, 'black')):
             evalu += 2.1
@@ -154,31 +145,23 @@ def EvaluatePosition(colour):
         evalu -= 0.7
 
     # Make sure bae is safe
-    if colour == 'white':
-        for y in wq.piecelist:
-            if not(isSafe(y, 'white')):
-               evalu -= 4.2
-    elif colour == 'black':
-        for y in bq.piecelist:
-            if not(isSafe(y, 'black')):
-                evalu += 4.2
+    for y in wq.piecelist:
+        if not(isSafe(y, 'white')):
+           evalu -= 4.2
+    for y in bq.piecelist:
+        if not(isSafe(y, 'black')):
+            evalu += 4.2
 
-    # Try to corner the king
-    kingpos = kingSqr
-    kingCanMove = False
-    rekt = False
-    if not isSafe(kingpos, opp):
-        rekt = True
-        if colour == 'white':
-            evalu += 0.5
-        else:
-            evalu -= 0.5
-    for y in pm.kingMovement(kingpos):
-        if isSafe(y, opp):
-            kingCanMove = True
-    if not(kingCanMove) and rekt:
-        if pm.isMated(opp) == 'CHECKMATE':
-            return Kval
+    # Checkmate is the ultimate goal
+    if isInCheck('white'):
+        evalu -= 0.5
+        if pm.isMated('white') == 'CHECKMATE':
+            evalu -= Kval
+
+    if isInCheck('black'):
+        evalu += 0.5
+        if pm.isMated('black') == 'CHECKMATE':
+            evalu += Kval
 
     if colour == 'black':
         evalu *= -1
@@ -201,18 +184,15 @@ def FindBest(colour, plies):
         pieces = pm.blackpieces
         opp = 'white'
 
-    topMoves = range(5)
-    for i in range(5):
-        a = topMoves[i] = Position()
-        a.evaluation = -1000
+    width = 5
+    topMoves = []
 
-    bestsofar, nextbest = Position(), Position()
-    bestsofar.evaluation, nextbest.evaluation = -1000, -1000
+    bestsofar = Position()
+    bestsofar.evaluation = -1000
 
     for p in pieces:
         for start in p.piecelist:
-            moveslist = PieceMovement(start)
-            for end in moveslist:
+            for end in PieceMovement(start):
                 cur = Position()
                 cur.movestart = start
                 cur.moveend = end
@@ -220,37 +200,44 @@ def FindBest(colour, plies):
                 j = pm.pieceatsqr(start)
 
                 pm.MovePiece(start, end)
-                if not(i) and not(isSafe(end, colour)) and isSafe(end, opp):
-                        # Don't hang pieces unless you need to
-                        cur.evaluation -= j.value
-                cur.evaluation += EvaluatePosition(colour)
+                cur.evaluation = EvaluatePosition(colour)
                 pm.UndoMove()
 
-                # No kamikaze allowed
-                if i and i.value < j.value:
-                    if not(isSafe(end, colour)):
-                        # Unless absolutely necessary
+                # Don't hang pieces unless you need to
+                if not(i) and not(isSafe(end, colour)) and isSafe(end, opp):
                         cur.evaluation -= j.value
 
-                if cur.evaluation >= bestsofar.evaluation:
-                    x = len(topMoves)-1
-                    for i in range(x):
-                        topMoves[i] = topMoves[i+1]
-                    topMoves[x] = bestsofar = cur
+                # No kamikaze allowed
+                if i and i.value < j.value and not(isSafe(end, colour)):
+                        cur.evaluation -= j.value
+
+                def e(pos):
+                    return pos.evaluation
+
+                x = len(topMoves)
+                if x < width:
+                    topMoves.append(cur)
+                    topMoves.sort(None, e)
+                elif cur.evaluation > topMoves[0].evaluation:
+                    topMoves[0] = cur
+                    topMoves.sort(None, e)
+                    
 
     if plies > 1:
         plies -= 1
         for pos in topMoves:
+            temp = pos.evaluation
             if pos.movestart != pos.moveend:
                 pm.MovePiece(pos.movestart, pos.moveend)
                 oppTop = FindBest(opp, plies)
-                oppeval = oppTop.evaluation
-                pos.evaluation = oppeval*(-1)
-                print oppTop.movestart, "->", oppTop.moveend
+                pos.evaluation = (-1) * oppTop.evaluation
+                print oppTop.moveend
+                print pos.movestart, "->", pos.moveend
+                print temp, ";", pos.evaluation
                 pm.UndoMove()
+        print "---------"
 
     for pos in topMoves:
-        print pos.evaluation
         if pos.evaluation > bestsofar.evaluation:
             bestsofar = pos
     return bestsofar
@@ -412,43 +399,43 @@ def OpeningMoves(colour, movenum, randnum):
             return 14, 22 #g3
 
     if movenum == 1 and colour == 'black':
-        if boardlist[26] == id(wp):
+        if pm.boardlist[26] == id(wp):
             if randnum < 0.75:
                 return 50, 34 #c5
             else:
                 return 52, 36 #e5
-        elif boardlist[27] == id(wp):
+        elif pm.boardlist[27] == id(wp):
             if randnum < 0.25:
                 return 62, 45 #Nf6
             else:
                 return 51, 35 #d5
-        elif boardlist[28] == id(wp):
+        elif pm.boardlist[28] == id(wp):
             if randnum < 0.5:
                 return 50, 34
             else:
                 return 52, 36
 
     elif movenum == 2 and colour == 'black':
-        if boardlist[27] == id(wp) and boardlist[26] == id(wp):
-            if boardlist[35] == id(bp):
+        if pm.boardlist[27] == id(wp) and pm.boardlist[26] == id(wp):
+            if pm.boardlist[35] == id(bp):
                 if randnum < 0.5:
                     return 35, 26 #dxc4
                 else:
                     return 52, 44 #e6
-            elif boardlist[45] == id(bk):
+            elif pm.boardlist[45] == id(bk):
                 return 52, 44
-        if boardlist[28] == id(wp) and boardlist[21] == id(wn):
-            if boardlist[51] == id(bp) and boardlist[34] == id(bp):
+        if pm.boardlist[28] == id(wp) and pm.boardlist[21] == id(wn):
+            if pm.boardlist[51] == id(bp) and pm.boardlist[34] == id(bp):
                 return 51, 43 #d6
-            if boardlist[57] == id(bn) and boardlist[36] == id(bp):
+            if pm.boardlist[57] == id(bn) and pm.boardlist[36] == id(bp):
                 return 57, 42 #Nc6
 
     elif movenum >= 3 and colour == 'black':
-        if boardlist[27] == id(wn) and boardlist[62] == id(bn):
-            if boardlist[34] != id(bp) and boardlist[36] != id(bp):
+        if pm.boardlist[27] == id(wn) and pm.boardlist[62] == id(bn):
+            if pm.boardlist[34] != id(bp) and pm.boardlist[36] != id(bp):
                 return 62, 45
-        if boardlist[27] == id(wp) and boardlist[26] == id(wp):
-            if boardlist[62] == id(bn):
+        if pm.boardlist[27] == id(wp) and pm.boardlist[26] == id(wp):
+            if pm.boardlist[62] == id(bn):
                 return 62, 45
     default = FindBest(colour, 2)
     return default.movestart, default.moveend
