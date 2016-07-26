@@ -13,6 +13,8 @@ black = (156, 102, 31)
 lightblue = (102, 255, 255)
 blue = (0, 0, 128)
 green = (0, 255, 0)
+brown = (153, 76, 0)
+super_white = (255, 255, 255) ##
 
 marginsize = 30
 screenwidth = 1024 # 640 for a smaller screen
@@ -45,6 +47,12 @@ def drawBoard():
     size = boardsize
     k = squaresize
     pygame.draw.rect(screen, boardcolour, (x, y, size, size), 3)
+    for sqr in range(64):
+        sx = xcorner + (sqr % 8)*k
+        sy = ycorner + (7 - sqr / 8)*k
+        a, b = sqr/8, sqr%2
+        if a%2 == b:
+            rect = pygame.draw.rect(screen, brown, (sx, sy, squaresize, squaresize))
     i = k
     while i <= size - k:
         pygame.draw.lines(screen, boardcolour, False, [(x+i, y), (x+i, y+size)], 3)
@@ -63,7 +71,11 @@ def drawPieces():
             x = xcorner + (sqr % 8)*k
             y = ycorner + (7 - sqr / 8)*k
             pieceImage = pygame.image.load(p.picture)
-            pieceImage = pygame.transform.smoothscale(pieceImage, (k-4, k-4))
+            # smoothscale interferes with transparency
+            pieceImage = pygame.transform.scale(pieceImage, (k-4, k-4)) 
+            ##pieceImage.convert_alpha()
+            ##pieceImage.set_alpha(128)
+            pieceImage.set_colorkey(super_white) # Makes pieces transparent
             screen.blit(pieceImage, (x+2, y+2)) # Gives the illusion of white space
     pygame.display.update()
 
