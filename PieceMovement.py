@@ -215,6 +215,7 @@ def MovePiece(start, end):
                     boardlist[e+8] = 0
 
     updatepieces()
+    updateCastlingRights()
 
 
 # Checks if each side can still castle

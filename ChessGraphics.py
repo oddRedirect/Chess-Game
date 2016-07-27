@@ -8,18 +8,14 @@ from pygame.locals import *
 
 backcolour = (255, 255, 255)
 boardcolour = (0, 0, 0)
-white = (252, 230, 201)
-black = (156, 102, 31)
 lightblue = (102, 255, 255)
 blue = (0, 0, 128)
 green = (0, 255, 0)
 brown = (153, 76, 0)
-super_white = (255, 255, 255) ##
 
 marginsize = 30
 screenwidth = 1024 # 640 for a smaller screen
 screenheight = 640 # 480 for a smaller screen
-pi = 3.14159
 
 if screenwidth >= screenheight:
     xcorner = (screenwidth - screenheight) / 2 + marginsize
@@ -48,19 +44,14 @@ def drawBoard():
     k = squaresize
     pygame.draw.rect(screen, boardcolour, (x, y, size, size), 3)
     for sqr in range(64):
-        sx = xcorner + (sqr % 8)*k
-        sy = ycorner + (7 - sqr / 8)*k
+        #TODO: Relate this 2 to the 3 used for drawing the board outline
+        sx = xcorner + (sqr % 8)*k + 2
+        sy = ycorner + (7 - sqr / 8)*k + 2
         a, b = sqr/8, sqr%2
         if a%2 == b:
-            rect = pygame.draw.rect(screen, brown, (sx, sy, squaresize, squaresize))
-    i = k
-    while i <= size - k:
-        pygame.draw.lines(screen, boardcolour, False, [(x+i, y), (x+i, y+size)], 3)
-        i += k
-    i = k
-    while i <= size - k:
-        pygame.draw.lines(screen, boardcolour, False, [(x, y+i), (x+size, y+i)], 3)
-        i += k
+            pygame.draw.rect(screen, brown, (sx, sy, squaresize, squaresize))
+        else:
+            pygame.draw.rect(screen, lightblue, (sx, sy, squaresize, squaresize))
 
 
 # Draws the pieces to the screen
@@ -71,12 +62,8 @@ def drawPieces():
             x = xcorner + (sqr % 8)*k
             y = ycorner + (7 - sqr / 8)*k
             pieceImage = pygame.image.load(p.picture)
-            # smoothscale interferes with transparency
-            pieceImage = pygame.transform.scale(pieceImage, (k-4, k-4)) 
-            ##pieceImage.convert_alpha()
-            ##pieceImage.set_alpha(128)
-            pieceImage.set_colorkey(super_white) # Makes pieces transparent
-            screen.blit(pieceImage, (x+2, y+2)) # Gives the illusion of white space
+            pieceImage = pygame.transform.smoothscale(pieceImage, (k, k)) 
+            screen.blit(pieceImage, (x, y))
     pygame.display.update()
 
 
@@ -106,6 +93,7 @@ def drawHighlight(sqr):
     r = 7 - sqr / 8
     x = xcorner + f * squaresize
     y = ycorner + r * squaresize
+    #TODO: Change this highlight colour so it can be seen more clearly
     pygame.draw.rect(screen, green, (x, y, squaresize, squaresize), 2)
     pygame.display.update()
     
@@ -181,7 +169,6 @@ def DoCompTurn(turn):
         k = ChessEngine.FindBest(turn, 2)
         start, end = k.movestart, k.moveend
     PieceMovement.MovePiece(start, end)
-    PieceMovement.updateCastlingRights()
     drawStuff()
     drawHighlight(end)
     if turn == 'white':
@@ -218,7 +205,6 @@ def DoPlayerTurn(turn):
                         for s in PieceMovement.PieceMovement(temp):
                             if msqr == s:
                                 PieceMovement.MovePiece(temp, msqr)
-                                PieceMovement.updateCastlingRights()
                                 drawStuff()
                                 if turn == 'white':
                                     mainState.turn = 'black'
