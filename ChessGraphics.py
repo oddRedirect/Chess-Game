@@ -4,7 +4,6 @@ import ChessEngine
 import PieceMovement
 import random
 import time
-from pygame.locals import *
 
 backcolour = (255, 255, 255)
 boardcolour = (0, 0, 0)
@@ -12,19 +11,18 @@ lightblue = (102, 255, 255)
 blue = (0, 0, 128)
 green = (0, 255, 0)
 brown = (153, 76, 0)
+purple = (138, 6, 255)
 
 marginsize = 30
 screenwidth = 1024 # 640 for a smaller screen
 screenheight = 640 # 480 for a smaller screen
 
 if screenwidth >= screenheight:
-    xcorner = (screenwidth - screenheight) / 2 + marginsize
-    ycorner = marginsize
-    boardsize = screenheight - 2*marginsize
+    dx, dy = (screenwidth - screenheight)/2, 0
 else:
-    xcorner = marginsize
-    ycorner = (screenheight - screenwidth) / 2 + marginsize
-    boardsize = screenwidth - 2*marginsize
+    dx, dy = 0, (screenheight - screenwidth)/2
+xcorner, ycorner = dx + marginsize, dy + marginsize
+boardsize = min(screenheight, screenwidth) - 2 * marginsize
 
 squaresize = boardsize / 8
 buttonx = screenwidth / 2 - marginsize
@@ -33,45 +31,42 @@ undox = buttonx + 100
 
 pygame.init()
 screen = pygame.display.set_mode((screenwidth, screenheight))
-MessageFont = pygame.font.SysFont("comic sans", 18) 
+MessageFont = pygame.font.SysFont("comic sans", 18)
+ButtonFont = pygame.font.SysFont("comic sans", 15)
 
 
 # Draws the board to the screen
 def drawBoard():
-    x = xcorner
-    y = ycorner
+    x, y = xcorner, ycorner
     size = boardsize
     k = squaresize
     pygame.draw.rect(screen, boardcolour, (x, y, size, size), 3)
     for sqr in range(64):
-        #TODO: Relate this 2 to the 3 used for drawing the board outline
-        sx = xcorner + (sqr % 8)*k + 2
-        sy = ycorner + (7 - sqr / 8)*k + 2
+        sx = x + (sqr % 8)*k + 2 # Add 2 to centre the board
+        sy = y + (7 - sqr / 8)*k + 2
         a, b = sqr/8, sqr%2
         if a%2 == b:
-            pygame.draw.rect(screen, brown, (sx, sy, squaresize, squaresize))
+            pygame.draw.rect(screen, brown, (sx, sy, k, k))
         else:
-            pygame.draw.rect(screen, lightblue, (sx, sy, squaresize, squaresize))
+            pygame.draw.rect(screen, lightblue, (sx, sy, k, k))        
 
 
 # Draws the pieces to the screen
 def drawPieces():
     k = squaresize
     for p in PieceMovement.allpieces:
+        pieceImage = pygame.image.load(p.picture)
+        pieceImage = pygame.transform.smoothscale(pieceImage, (k, k))
         for sqr in p.piecelist:
             x = xcorner + (sqr % 8)*k
-            y = ycorner + (7 - sqr / 8)*k
-            pieceImage = pygame.image.load(p.picture)
-            pieceImage = pygame.transform.smoothscale(pieceImage, (k, k)) 
+            y = ycorner + (7 - sqr / 8)*k 
             screen.blit(pieceImage, (x, y))
     pygame.display.update()
 
 
 # Draws the reset button
 def drawButton():
-    x = buttonx
-    y = buttony
-    ButtonFont = pygame.font.SysFont("comic sans", 15)
+    x, y = buttonx, buttony
     pygame.draw.rect(screen, boardcolour, (x, y, 75, 12), 2)
     message = ButtonFont.render("NEW GAME", 1, blue)
     screen.blit(message, (x+2, y+2))
@@ -79,9 +74,7 @@ def drawButton():
 
 # Draws the undo button
 def drawUndo():
-    x = undox
-    y = buttony
-    ButtonFont = pygame.font.SysFont("comic sans", 15)
+    x, y = undox, buttony
     pygame.draw.rect(screen, boardcolour, (x, y, 75, 12), 2)
     message = ButtonFont.render("UNDO", 1, blue)
     screen.blit(message, (x+2, y+2))
@@ -91,11 +84,9 @@ def drawUndo():
 def drawHighlight(sqr):
     f = sqr % 8
     r = 7 - sqr / 8
-    x = xcorner + f * squaresize
-    y = ycorner + r * squaresize
-    #TODO: Change this highlight colour so it can be seen more clearly
-    pygame.draw.rect(screen, green, (x, y, squaresize, squaresize), 2)
-    pygame.display.update()
+    x = xcorner + f * squaresize + 2
+    y = ycorner + r * squaresize + 2
+    pygame.draw.rect(screen, purple, (x, y, squaresize, squaresize))
     
 
 # Returns square clicked (as a number) or False if mouse was off board
@@ -134,6 +125,14 @@ def drawStuff():
     drawBoard()
     drawPieces()
 
+def drawStuffWithHighlight(sqr):
+    screen.fill(backcolour)
+    drawButton()
+    drawUndo()
+    drawBoard()
+    drawHighlight(sqr)
+    drawPieces()
+
 
 # A class used for resetting the game
 class GameState:
@@ -169,8 +168,7 @@ def DoCompTurn(turn):
         k = ChessEngine.FindBest(turn, 2)
         start, end = k.movestart, k.moveend
     PieceMovement.MovePiece(start, end)
-    drawStuff()
-    drawHighlight(end)
+    drawStuffWithHighlight(end)
     if turn == 'white':
         mainState.turn = 'black'
         mainState.movenumber += 1
