@@ -248,92 +248,67 @@ def UndoMove():
 
     
 #helper
-def rookMovement(i, colour):
+def rookMovement(i):
     p = []
     x = i - 8
     while x >= 0:
-        if boardlist[x] != 0:
-            m = pieceatsqr(x)
-            if m and m.colour != colour:
-                p.append(x)
-            break
         p.append(x)
+        if boardlist[x] != 0:
+            break
         x -= 8
     x = i + 8
     while x < 64:
-        if boardlist[x] != 0:
-            m = pieceatsqr(x)
-            if m and m.colour != colour:
-                p.append(x)
-            break
         p.append(x)
-        x += 8
-    x = i
-    while x % 8 > 0:
-        if boardlist[x-1] != 0:
-            m = pieceatsqr(x-1)
-            if m and m.colour != colour:
-                p.append(x-1)
+        if boardlist[x] != 0:
             break
-        p.append(x-1)
+        x += 8
+    x = i - 1
+    while (x+1) % 8 > 0:
+        p.append(x)
+        if boardlist[x] != 0:
+            break
         x -= 1
     x = i + 1
     while x % 8 > 0:
-        if boardlist[x] != 0:
-            m = pieceatsqr(x)
-            if m and m.colour != colour:
-                p.append(x)
-            break
         p.append(x)
+        if boardlist[x] != 0:
+            break
         x += 1
     return p
 
 #helper
-def bishopMovement(i, colour):
+def bishopMovement(i):
     p =[]
     x = i - 9
     while x % 8 < 7 and x >= 0:
-        if boardlist[x] != 0:
-            m = pieceatsqr(x)
-            if m and m.colour != colour:
-                p.append(x)
-            break
         p.append(x)
+        if boardlist[x] != 0:
+            break
         x -= 9
     x = i + 9
     while x % 8 > 0 and x < 64:
-        if boardlist[x] != 0:
-            m = pieceatsqr(x)
-            if m and m.colour != colour:
-                p.append(x)
-            break
         p.append(x)
+        if boardlist[x] != 0:
+            break
         x += 9
     x = i - 7
     while x % 8 > 0 and x > 0:
-        if boardlist[x] != 0:
-            m = pieceatsqr(x)
-            if m and m.colour != colour:
-                p.append(x)
-            break
         p.append(x)
+        if boardlist[x] != 0:
+            break
         x -= 7
     x = i + 7
     while x % 8 < 7 and x < 64:
-        if boardlist[x] != 0:
-            m = pieceatsqr(x)
-            if m and m.colour != colour:
-                p.append(x)
-            break
         p.append(x)
+        if boardlist[x] != 0:
+            break
         x += 7
     return p
 
 #helper
 def kingMovement(i):
     sqr = numtocoord(i)
-    m = sqr[0]
-    n = sqr[1]
+    m, n = sqr[0], sqr[1]
     p = []
     if m != 'a':
         p.append(i - 1)
@@ -356,8 +331,7 @@ def kingMovement(i):
 #helper
 def knightMovement(i):
     sqr = numtocoord(i)
-    m = sqr[0]
-    n = sqr[1]
+    m, n = sqr[0], sqr[1]
     p = []
     if m != 'a' and m != 'b':
         if n != '1':
@@ -385,8 +359,7 @@ def knightMovement(i):
 def PieceMovement(i):
     j = pieceatsqr(i)
     sqr = numtocoord(i)
-    m = sqr[0]
-    n = sqr[1]
+    m, n = sqr[0], sqr[1]
     p = []
     
     if not j:
@@ -444,18 +417,18 @@ def PieceMovement(i):
 
     # Rook Movement
     elif j.name == 'rook':
-        p = rookMovement(i, j.colour)
+        p = rookMovement(i)
 
     # Bishop Movement
     elif j.name == 'bishop':
-        p = bishopMovement(i, j.colour)
+        p = bishopMovement(i)
 
     # Queen Movement
     elif j.name == 'queen':
-        p = rookMovement(i, j.colour) + bishopMovement(i, j.colour)
+        p = rookMovement(i) + bishopMovement(i)
 
     def MoveFilterer(x):
-        # Make sure we don't have friendly fire (from the king or knight)
+        # Make sure we don't have friendly fire
         if boardlist[x] != 0 and (pieceatsqr(x)).colour == j.colour:
             return False
         # Cannot castle out of check
@@ -508,10 +481,10 @@ def BigPieceDanger(sqr, colour):
         rook, bishop, queen = id(br), id(bb), id(bq)
     else:
         rook, bishop, queen = id(wr), id(wb), id(wq)
-    for y in rookMovement(sqr, colour):
+    for y in rookMovement(sqr):
         if boardlist[y] == rook or boardlist[y] == queen:
             return True
-    for y in bishopMovement(sqr, colour):
+    for y in bishopMovement(sqr):
         if boardlist[y] == bishop or boardlist[y] == queen:
             return True
 
