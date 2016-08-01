@@ -35,6 +35,11 @@ MessageFont = pygame.font.SysFont("comic sans", 18)
 ButtonFont = pygame.font.SysFont("comic sans", 15)
 
 
+# helper to obtain file and rank
+def fileAndRank(sqr):
+    return sqr%8, 7 - sqr/8
+
+
 # Draws the board to the screen
 def drawBoard():
     x, y = xcorner, ycorner
@@ -64,26 +69,21 @@ def drawPieces():
     pygame.display.update()
 
 
-# Draws the reset button
-def drawButton():
-    x, y = buttonx, buttony
+# Draws the buttons below the board
+def buttonHelper(xcoord, text):
+    x, y = xcoord, buttony
     pygame.draw.rect(screen, boardcolour, (x, y, 75, 12), 2)
-    message = ButtonFont.render("NEW GAME", 1, blue)
+    message = ButtonFont.render(text, 1, blue)
     screen.blit(message, (x+2, y+2))
 
-
-# Draws the undo button
-def drawUndo():
-    x, y = undox, buttony
-    pygame.draw.rect(screen, boardcolour, (x, y, 75, 12), 2)
-    message = ButtonFont.render("UNDO", 1, blue)
-    screen.blit(message, (x+2, y+2))
-
+def drawButtons():
+    buttonHelper(buttonx, "NEW GAME")
+    buttonHelper(undox, "UNDO")
+    
 
 # Highlights the specified square
 def drawHighlight(sqr):
-    f = sqr % 8
-    r = 7 - sqr / 8
+    f, r = fileAndRank(sqr)
     x = xcorner + f * squaresize + 2
     y = ycorner + r * squaresize + 2
     pygame.draw.rect(screen, purple, (x, y, squaresize, squaresize))
@@ -106,8 +106,7 @@ def squareClicked(mousex, mousey):
 # Draws a circle for each valid move of the piece on sqr
 def drawMoves(sqr):
     for s in PieceMovement.PieceMovement(sqr):
-        f = s % 8
-        r = 7 - s//8
+        f, r = fileAndRank(s)
         size = boardsize
         k = squaresize
         x = (xcorner + k*f + k/2) // 1
@@ -118,19 +117,12 @@ def drawMoves(sqr):
 
 
 # Redraws the board and pieces
-def drawStuff():
+def drawStuff(sqr=None):
     screen.fill(backcolour)
-    drawButton()
-    drawUndo()
+    drawButtons()
     drawBoard()
-    drawPieces()
-
-def drawStuffWithHighlight(sqr):
-    screen.fill(backcolour)
-    drawButton()
-    drawUndo()
-    drawBoard()
-    drawHighlight(sqr)
+    if sqr:
+        drawHighlight(sqr)
     drawPieces()
 
 
@@ -158,22 +150,25 @@ def UndoStuff():
         drawStuff()
 
 
-# Makes a move for the computer
-def DoCompTurn(turn):
-    if ChessEngine.isEndgame():
-        start, end = ChessEngine.BasicMates(turn)
-    elif mainState.movenumber <= 5:
-        start, end = ChessEngine.OpeningMoves(turn, mainState.movenumber, mainState.randmove)
-    else:
-        k = ChessEngine.FindBest(turn, 2)
-        start, end = k.movestart, k.moveend
-    PieceMovement.MovePiece(start, end)
-    drawStuffWithHighlight(end)
+# Switches turn and increases move number
+def switchTurn(turn):
     if turn == 'white':
         mainState.turn = 'black'
         mainState.movenumber += 1
     elif turn == 'black':
         mainState.turn = 'white'
+
+
+# Makes a move for the computer
+def DoCompTurn(turn):
+    if mainState.movenumber <= 5:
+        start, end = ChessEngine.OpeningMoves(turn, mainState.movenumber, mainState.randmove)
+    else:
+        k = ChessEngine.FindBest(turn, 2)
+        start, end = k.movestart, k.moveend
+    PieceMovement.MovePiece(start, end)
+    drawStuff(end)
+    switchTurn(turn)
 
 
 # Moves a piece selected by the player
@@ -204,11 +199,7 @@ def DoPlayerTurn(turn):
                             if msqr == s:
                                 PieceMovement.MovePiece(temp, msqr)
                                 drawStuff()
-                                if turn == 'white':
-                                    mainState.turn = 'black'
-                                    mainState.movenumber += 1
-                                elif turn == 'black':
-                                    mainState.turn = 'white'
+                                switchTurn(turn)
                                 return
                         drawStuff()
                         temp = -1

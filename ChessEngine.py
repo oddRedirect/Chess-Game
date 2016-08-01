@@ -161,13 +161,18 @@ def EvaluateMiddleGame(colour):
         if r == 1:
             evalu -= 0.35
 
-    # Add incentives for castling
     hs = wk.piecelist[0]
     ls = bk.piecelist[0]
+    # Add incentives for castling
     if hs == 2 or hs == 6:
         evalu += 0.7
+    # Discourage useless king marches
+    elif not(pm.curState.wl or pm.curState.ws):
+        evalu -= 0.3
     if ls == 57 or ls == 62:
         evalu -= 0.7
+    elif not(pm.curState.bl or pm.curState.bs):
+        evalu += 0.3
 
     if colour == 'black':
         evalu *= -1
@@ -246,34 +251,20 @@ def FindBest(colour, plies):
     for pos in topMoves:
         if pos.evaluation > bestsofar.evaluation:
             bestsofar = pos
-    return bestsofar
-            
+    return bestsofar  
 
 
-# returns the file or rank that colour can use to attack the enemy king
+# returns True if kingpos has the opposition against the enemy king
 def hasOpposition(kingpos, opp_pos):
     a, b = kingpos, opp_pos
     #TODO: check opposition for corners (if b in corners...)
     corners = [0, 7, 56, 63]
-    if a/8 == b/8 and abs(a-b) == 2:
-        return (b%8, "file") 
-    elif a%8 == b%8 and abs(a-b) == 16:
-        return ((b/8) * 8, "rank")
-    return False, ""
-
-# Opposes the enemy king (returns the square to move the king to)
-def getOpposition(kingpos, opp_pos):
-    b = opp_pos
-    kingMoves = PieceMovement(kingpos)
-    for y in kingMoves:
-        if abs(y-b) == 16 or (y/8 == b/8 and abs(y-b) == 2):
-            return y
-    for y in kingMoves:
-        if abs(y-b) == 32 or (y/8 == b/8 and abs(y-b) == 4):
-            return y
-    for y in kingMoves:
-        if abs(y-b) == 48 or (y/8 == b/8 and abs(y-b) == 6):
-            return y
+    if abs(a-b) == 16 or (a/8 == b/8 and abs(a-b) == 2):
+        return True
+    elif abs(a-b) == 32 or (a/8 == b/8 and abs(a-b) == 4):
+        return True
+    elif abs(a-b) == 48 or (a/8 == b/8 and abs(a-b) == 6):
+        return True
     return False
 
 
@@ -324,7 +315,6 @@ def BasicMates(colour):
 
 # Finds possible opening moves for black
 def OpeningMoves(colour, movenum, randnum):
-    #randnum = random.random()
     if movenum == 0 and colour == 'white':
         if randnum < 0.3:
             return 11, 27 #d4
