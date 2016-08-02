@@ -40,6 +40,28 @@ def fileAndRank(sqr):
     return sqr%8, 7 - sqr/8
 
 
+def checkType(event):
+    # Check for quit
+    if event.type == pygame.QUIT:
+        pygame.quit(); sys.exit();
+    # Reset the game if 'new game' selected
+    if event.type == pygame.MOUSEBUTTONUP:
+        mousex, mousey = event.pos
+        if buttonx < mousex < buttonx + 75 and buttony < mousey < buttony + 12:
+            resetState()
+            return
+        elif undox < mousex < undox + 75 and buttony < mousey < buttony + 12:
+            UndoStuff()
+            return
+
+
+def displayMessage(message, xcoord):
+    message = MessageFont.render(message, 1, blue)
+    screen.blit(message, (xcoord, marginsize /2))
+    pygame.display.update()
+    mainState.turn = 'end'
+
+
 # Draws the board to the screen
 def drawBoard():
     x, y = xcorner, ycorner
@@ -117,11 +139,11 @@ def drawMoves(sqr):
 
 
 # Redraws the board and pieces
-def drawStuff(sqr=None):
+def drawStuff(sqr=-1):
     screen.fill(backcolour)
     drawButtons()
     drawBoard()
-    if sqr:
+    if sqr != -1:
         drawHighlight(sqr)
     drawPieces()
 
@@ -176,18 +198,7 @@ def DoPlayerTurn(turn):
     temp = -1
     while (True):
         for event in pygame.event.get():
-            # Check for quit
-            if event.type == pygame.QUIT:
-                pygame.quit(); sys.exit();
-            # Reset the game if 'new game' selected
-            if event.type == pygame.MOUSEBUTTONUP:
-                mousex, mousey = event.pos
-                if buttonx < mousex < buttonx + 75 and buttony < mousey < buttony + 12:
-                    resetState()
-                    return
-                elif undox < mousex < undox + 75 and buttony < mousey < buttony + 12:
-                    UndoStuff()
-                    return
+            checkType(event)
             if event.type == pygame.MOUSEBUTTONUP:
                 mousex, mousey = event.pos
                 msqr = squareClicked(mousex, mousey)
@@ -226,31 +237,16 @@ def main():
     # Main game loop:
     while (True):
         for event in pygame.event.get():
-            # Check for quit
-            if event.type == pygame.QUIT:
-                pygame.quit(); sys.exit();
-            # Reset the game if 'new game' selected
-            if event.type == pygame.MOUSEBUTTONUP:
-                mousex, mousey = event.pos
-                if buttonx < mousex < buttonx + 75 and buttony < mousey < buttony + 12:
-                    resetState()
-                elif undox < mousex < undox + 75 and buttony < mousey < buttony + 12:
-                    UndoStuff()
+            checkType(event)
         # Checks for mate
         if mainState.turn != 'end':
             mate_status = PieceMovement.isMated(mainState.turn)
         if mate_status:
-            message = MessageFont.render(mate_status + "!", 1, blue)
-            screen.blit(message, (screenwidth / 2 - marginsize, marginsize /2))
-            pygame.display.update()
-            mainState.turn = 'end'
+            displayMessage(mate_status + "!", screenwidth / 2 - marginsize)
         # Checks for draw
         draw_status = PieceMovement.isDraw() 
         if draw_status:
-            message = MessageFont.render(draw_status, 1, blue)
-            screen.blit(message, (screenwidth / 2 - 2*marginsize, marginsize / 2))
-            pygame.display.update()
-            mainState.turn = 'end'
+            displayMessage(draw_status, screenwidth / 2 - 2*marginsize)
 
         elif mainState.turn == 'white':
             DoPlayerTurn(mainState.turn)
