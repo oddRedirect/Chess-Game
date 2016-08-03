@@ -10,6 +10,8 @@ Rval = 5
 Qval = 9
 Kval = 100
 
+mateThreshold = Kval - 2*Qval - 2*Pval
+
 # Assign a value to each piece
 for y in pm.allpieces:
     if y.name == 'pawn':
@@ -50,6 +52,7 @@ def EvaluatePosition(colour):
                 evalu -= y.value/2 - 0.3
     for y in pm.blackpieces:
         evalu -= y.value * len(y.piecelist)
+        #TODO: disregard king danger for isSafe here
         for p in y.piecelist:
             if not(y.name == 'pawn') and not(isSafe(p, 'black')):
                 evalu += y.value/2 - 0.3
@@ -187,7 +190,7 @@ class Position:
     
 
 # Returns the "best" move for colour
-def FindBest(colour, plies):
+def FindBest(colour, plies=4, width=5):
     if colour == 'white':
         pieces = pm.whitepieces
         opp = 'black'
@@ -195,11 +198,11 @@ def FindBest(colour, plies):
         pieces = pm.blackpieces
         opp = 'white'
 
-    width = 5
     topMoves = []
+    default = Position()
+    default.evaluation = -1000
 
-    bestsofar = Position()
-    bestsofar.evaluation = -1000
+    def e(pos): return pos.evaluation
 
     for p in pieces:
         for start in p.piecelist:
@@ -207,31 +210,21 @@ def FindBest(colour, plies):
                 cur = Position()
                 cur.movestart = start
                 cur.moveend = end
-                i = pm.pieceatsqr(end)
-                j = pm.pieceatsqr(start)
 
                 pm.MovePiece(start, end)
                 cur.evaluation = EvaluatePosition(colour)
                 pm.UndoMove()
 
-                # Don't hang pieces unless you need to
-                if not(i) and not(isSafe(end, colour)) and isSafe(end, opp):
-                        cur.evaluation -= j.value
-
-                # No kamikaze allowed
-                if i and i.value < j.value and not(isSafe(end, colour)):
-                        cur.evaluation -= j.value
-
-                def e(pos):
-                    return pos.evaluation
-
-                x = len(topMoves)
-                if x < width:
+                if len(topMoves) < width:
                     topMoves.append(cur)
                     topMoves.sort(None, e)
                 elif cur.evaluation > topMoves[0].evaluation:
                     topMoves[0] = cur
                     topMoves.sort(None, e)
+
+                # Return right away if a mate is found
+                if cur.evaluation >= mateThreshold:
+                    return cur
                     
 
     if plies > 1:
@@ -240,18 +233,21 @@ def FindBest(colour, plies):
             temp = pos.evaluation
             if pos.movestart != pos.moveend:
                 pm.MovePiece(pos.movestart, pos.moveend)
-                oppTop = FindBest(opp, plies)
+                oppTop = FindBest(opp, plies, 1)
                 pos.evaluation = (-1) * oppTop.evaluation
-                print oppTop.moveend
-                print pos.movestart, "->", pos.moveend
-                print temp, ";", pos.evaluation
+                #if colour == 'black':
+                 #   print oppTop.moveend
+                  #  print pos.movestart, "->", pos.moveend
+                   # print temp, ";", pos.evaluation
                 pm.UndoMove()
-        print "---------"
+    if plies == 3:
+        x = len(topMoves)
+        print topMoves[x-1].evaluation
+        #print "---------"
 
-    for pos in topMoves:
-        if pos.evaluation > bestsofar.evaluation:
-            bestsofar = pos
-    return bestsofar  
+    if len(topMoves) == 0:
+        topMoves.append(default)
+    return max(topMoves, key=e)  
 
 
 # returns True if kingpos has the opposition against the enemy king
@@ -305,12 +301,6 @@ def EvaluateEndgame(colour):
         evalu += 0.5
 
     return evalu
-    
-
-# Returns a move to maybe get closer to destroying the player
-def BasicMates(colour):
-    default = FindBest(colour, 2)
-    return default.movestart, default.moveend
                 
 
 # Finds possible opening moves for black
@@ -364,6 +354,6 @@ def OpeningMoves(colour, movenum, randnum):
         if pm.boardlist[27] == id(wp) and pm.boardlist[26] == id(wp):
             if pm.boardlist[62] == id(bn):
                 return 62, 45
-    default = FindBest(colour, 2)
+    default = FindBest(colour)
     return default.movestart, default.moveend
     

@@ -55,6 +55,7 @@ def checkType(event):
             return
 
 
+# Draws a message above the board
 def displayMessage(message, xcoord):
     message = MessageFont.render(message, 1, blue)
     screen.blit(message, (xcoord, marginsize /2))
@@ -186,7 +187,7 @@ def DoCompTurn(turn):
     if mainState.movenumber <= 5:
         start, end = ChessEngine.OpeningMoves(turn, mainState.movenumber, mainState.randmove)
     else:
-        k = ChessEngine.FindBest(turn, 2)
+        k = ChessEngine.FindBest(turn)
         start, end = k.movestart, k.moveend
     PieceMovement.MovePiece(start, end)
     drawStuff(end)
