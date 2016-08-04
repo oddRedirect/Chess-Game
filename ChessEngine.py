@@ -1,6 +1,8 @@
 import sys
 import PieceMovement as pm
 from PieceMovement import PieceMovement, isSafe, isInCheck
+from PieceMovement import wk, wq, wb, wn, wr, wp
+from PieceMovement import bk, bq, bb, bn, br, bp
 
 # Global Constants:
 Pval = 1
@@ -24,10 +26,6 @@ for y in pm.allpieces:
         y.value = Rval
     elif y.name == 'queen':
         y.value = Qval
-
-# Rename Piece objects from PieceMovement.py
-wk, wq, wb, wn, wr, wp = pm.wk, pm.wq, pm.wb, pm.wn, pm.wr, pm.wp
-bk, bq, bb, bn, br, bp = pm.bk, pm.bq, pm.bb, pm.bn, pm.br, pm.bp
 
 
 # Gives a numerical value for how good colour's position is
@@ -191,6 +189,9 @@ class Position:
 
 # Returns the "best" move for colour
 def FindBest(colour, plies=4, width=5):
+    if width <= 0:
+        width = 1
+    
     if colour == 'white':
         pieces = pm.whitepieces
         opp = 'black'
@@ -215,12 +216,22 @@ def FindBest(colour, plies=4, width=5):
                 cur.evaluation = EvaluatePosition(colour)
                 pm.UndoMove()
 
+                i = pm.pieceatsqr(end)
+
+                # Don't hang pieces unless you need to
+                if not(i) and not(isSafe(end, colour)) and isSafe(end, opp):
+                    cur.evaluation -= p.value
+ 
+                # No kamikaze allowed
+                if i and i.value < p.value and not(isSafe(end, colour)):
+                    cur.evaluation -= p.value
+
                 if len(topMoves) < width:
                     topMoves.append(cur)
-                    topMoves.sort(None, e)
+                    topMoves.sort(key=e)
                 elif cur.evaluation > topMoves[0].evaluation:
                     topMoves[0] = cur
-                    topMoves.sort(None, e)
+                    topMoves.sort(key=e)
 
                 # Return right away if a mate is found
                 if cur.evaluation >= mateThreshold:
@@ -229,21 +240,21 @@ def FindBest(colour, plies=4, width=5):
 
     if plies > 1:
         plies -= 1
+        width -= 2
         for pos in topMoves:
             temp = pos.evaluation
             if pos.movestart != pos.moveend:
                 pm.MovePiece(pos.movestart, pos.moveend)
-                oppTop = FindBest(opp, plies, 1)
+                oppTop = FindBest(opp, plies, width)
                 pos.evaluation = (-1) * oppTop.evaluation
-                #if colour == 'black':
-                 #   print oppTop.moveend
-                  #  print pos.movestart, "->", pos.moveend
-                   # print temp, ";", pos.evaluation
+                if plies == 3:
+                    print oppTop.moveend
+                    print pos.movestart, "->", pos.moveend
+                    print temp, ";", pos.evaluation
                 pm.UndoMove()
+
     if plies == 3:
-        x = len(topMoves)
-        print topMoves[x-1].evaluation
-        #print "---------"
+        print "---------"
 
     if len(topMoves) == 0:
         topMoves.append(default)
