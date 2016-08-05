@@ -13,6 +13,8 @@ Qval = 9
 Kval = 100
 
 mateThreshold = Kval - 2*Qval - 2*Pval
+maxPlies = 4
+NOISY_LOGGING = False
 
 # Assign a value to each piece
 for y in pm.allpieces:
@@ -28,10 +30,23 @@ for y in pm.allpieces:
         y.value = Qval
 
 
+def isSafeWithParams(sqr, colour, *args):
+    if 'P' in args and pm.PawnDanger(sqr, colour):
+        return False
+    if 'N' in args and pm.KnightDanger(sqr, colour):
+        return False
+    if 'K' in args and pm.KingDanger(sqr, colour):
+        return False
+    if 'B' in args and pm.BigPieceDanger(sqr, colour):
+        return False
+    return True
+
+
 # Gives a numerical value for how good colour's position is
 def EvaluatePosition(colour):
     evalu = 0
     whiteMate, blackMate = pm.isMated('white'), pm.isMated('black')
+    BL = pm.boardlist
 
     # Check for draw
     if pm.isDraw():
@@ -46,22 +61,28 @@ def EvaluatePosition(colour):
         evalu += y.value * len(y.piecelist)
         for p in y.piecelist:
             # Make sure pieces are safe
-            if not(y.name == 'pawn') and not(isSafe(p, 'white')):
+            if y.name != 'pawn' and not(isSafe(p, 'white')):
                 evalu -= y.value/2 - 0.3
     for y in pm.blackpieces:
         evalu -= y.value * len(y.piecelist)
         #TODO: disregard king danger for isSafe here
         for p in y.piecelist:
-            if not(y.name == 'pawn') and not(isSafe(p, 'black')):
+            if y.name != 'pawn' and not(isSafe(p, 'black')):
                 evalu += y.value/2 - 0.3
 
     for p in wp.piecelist:
         # Make sure pawns are safe
         if not(isSafe(p, 'white')) and isSafe(p, 'black'):
             evalu -= 0.4
+        # Passed pawns are GREAT
+        #TODO: improve alorithm for determining value of passed pawns
+        if p > 32 and BL[p+8] == 0 and BL[p+9] != id(bp) and BL[p+7] != id(bp):
+                evalu += p/8 - 3
     for p in bp.piecelist:
         if not(isSafe(p, 'black')) and isSafe(p, 'white'):
             evalu += 0.4
+        if p < 31 and BL[p-8] == 0 and BL[p-9] != id(wp) and BL[p-7] != id(wp):
+                evalu -= 4 - p/8
 
     # Checkmate is the ultimate goal
     if isInCheck('white'):
@@ -97,12 +118,6 @@ def EvaluateMiddleGame(colour):
             if pm.boardlist[y+9] == id(wn) or pm.boardlist[y+7] == id(wn):
                 if f > 0 and f < 7:
                     evalu += 0.35
-        # Passed pawns are GREAT
-        #TODO: improve alorithm for determining value of passed pawns
-        #TODO: Move this either to evalendgame or evalposition
-        if y > 32 and pm.pieceatsqr(y+8) == 0:
-            if y <= 54 and pm.boardlist[y+9] != id(bp) and pm.boardlist[y+7] != id(bp):
-                evalu += y/8 - 3
         # Doubled pawns are BAD
         if y < 56 and pm.boardlist[y + 8] == id(wp):
             evalu -= 0.5
@@ -115,9 +130,6 @@ def EvaluateMiddleGame(colour):
             if pm.boardlist[y-9] == id(bn) or pm.boardlist[y-7] == id(bn):
                 if f > 0 and f < 7:
                     evalu -= 0.35
-        if y < 31 and pm.pieceatsqr(y-8) == 0:
-            if y >= 9 and pm.boardlist[y-9] != id(wp) and pm.boardlist[y-7] != id(wp):
-                evalu -= 4 - y/8
         if y < 56 and pm.boardlist[y + 8] == id(bp):
             evalu += 0.5
 
@@ -175,6 +187,12 @@ def EvaluateMiddleGame(colour):
     elif not(pm.curState.bl or pm.curState.bs):
         evalu += 0.3
 
+    # Keep the f2/f7 square safe
+    if not(isSafe(53, 'black')) and isSafeWithParams(53, 'white', 'N', 'B'):
+        evalu += 0.5
+    if not(isSafe(13, 'white')) and isSafeWithParams(13, 'black', 'N', 'B'):
+        evalu -= 0.5
+
     if colour == 'black':
         evalu *= -1
         
@@ -188,7 +206,7 @@ class Position:
     
 
 # Returns the "best" move for colour
-def FindBest(colour, plies=4, width=5):
+def FindBest(colour, plies=maxPlies, width=5):
     if width <= 0:
         width = 1
     
@@ -217,13 +235,11 @@ def FindBest(colour, plies=4, width=5):
                 pm.UndoMove()
 
                 i = pm.pieceatsqr(end)
-
                 # Don't hang pieces unless you need to
                 if not(i) and not(isSafe(end, colour)) and isSafe(end, opp):
                     cur.evaluation -= p.value
- 
                 # No kamikaze allowed
-                if i and i.value < p.value and not(isSafe(end, colour)):
+                elif i and i.value < p.value and not(isSafe(end, colour)):
                     cur.evaluation -= p.value
 
                 if len(topMoves) < width:
@@ -238,22 +254,22 @@ def FindBest(colour, plies=4, width=5):
                     return cur
                     
 
+    #TODO: Use a helper function or a loop instead
     if plies > 1:
         plies -= 1
         width -= 2
         for pos in topMoves:
             temp = pos.evaluation
-            if pos.movestart != pos.moveend:
-                pm.MovePiece(pos.movestart, pos.moveend)
-                oppTop = FindBest(opp, plies, width)
-                pos.evaluation = (-1) * oppTop.evaluation
-                if plies == 3:
-                    print oppTop.moveend
-                    print pos.movestart, "->", pos.moveend
-                    print temp, ";", pos.evaluation
-                pm.UndoMove()
+            pm.MovePiece(pos.movestart, pos.moveend)
+            oppTop = FindBest(opp, plies, width)
+            pos.evaluation = (-1) * oppTop.evaluation
+            if NOISY_LOGGING and plies == maxPlies - 1:
+                print oppTop.moveend
+                print pos.movestart, "->", pos.moveend
+                print temp, ";", pos.evaluation
+            pm.UndoMove()
 
-    if plies == 3:
+    if NOISY_LOGGING and plies == maxPlies - 1:
         print "---------"
 
     if len(topMoves) == 0:
@@ -316,6 +332,7 @@ def EvaluateEndgame(colour):
 
 # Finds possible opening moves for black
 def OpeningMoves(colour, movenum, randnum):
+    #TODO: Place opening moves into a dictionary of some sort
     if movenum == 0 and colour == 'white':
         if randnum < 0.3:
             return 11, 27 #d4
