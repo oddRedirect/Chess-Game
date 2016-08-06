@@ -1,7 +1,8 @@
 import pygame
 import sys
 import ChessEngine
-import PieceMovement
+import PieceMovement as pm
+from PieceMovement import WHITE, BLACK
 import random
 import time
 
@@ -82,7 +83,7 @@ def drawBoard():
 # Draws the pieces to the screen
 def drawPieces():
     k = squaresize
-    for p in PieceMovement.allpieces:
+    for p in pm.allpieces:
         pieceImage = pygame.image.load(p.picture)
         pieceImage = pygame.transform.smoothscale(pieceImage, (k, k))
         for sqr in p.piecelist:
@@ -128,7 +129,7 @@ def squareClicked(mousex, mousey):
 
 # Draws a circle for each valid move of the piece on sqr
 def drawMoves(sqr):
-    for s in PieceMovement.PieceMovement(sqr):
+    for s in pm.PieceMovement(sqr):
         f, r = fileAndRank(s)
         size = boardsize
         k = squaresize
@@ -152,7 +153,7 @@ def drawStuff(sqr=-1):
 # A class used for resetting the game
 class GameState:
     movenumber = 0
-    turn = 'white'
+    turn = WHITE
     randmove = random.random()
 
 mainState = GameState()
@@ -160,26 +161,26 @@ mainState = GameState()
 def resetState():
     mainState.randmove = random.random()
     mainState.movenumber = 0
-    mainState.turn = 'white'
-    PieceMovement.resetgame()
+    mainState.turn = WHITE
+    pm.resetgame()
     drawStuff()
 
 
 # Undoes a move !!
 def UndoStuff():
     if mainState.turn != 'end':
-        PieceMovement.UndoMove()
-        PieceMovement.UndoMove()
+        pm.UndoMove()
+        pm.UndoMove()
         drawStuff()
 
 
 # Switches turn and increases move number
 def switchTurn(turn):
-    if turn == 'white':
-        mainState.turn = 'black'
+    if turn == WHITE:
+        mainState.turn = BLACK
         mainState.movenumber += 1
-    elif turn == 'black':
-        mainState.turn = 'white'
+    elif turn == BLACK:
+        mainState.turn = WHITE
 
 
 # Makes a move for the computer
@@ -189,7 +190,7 @@ def DoCompTurn(turn):
     else:
         k = ChessEngine.FindBest(turn)
         start, end = k.movestart, k.moveend
-    PieceMovement.MovePiece(start, end)
+    pm.MovePiece(start, end)
     drawStuff(end)
     switchTurn(turn)
 
@@ -207,9 +208,9 @@ def DoPlayerTurn(turn):
 
                     # Moves a piece if one was selected
                     if temp != -1:
-                        for s in PieceMovement.PieceMovement(temp):
+                        for s in pm.PieceMovement(temp):
                             if msqr == s:
-                                PieceMovement.MovePiece(temp, msqr)
+                                pm.MovePiece(temp, msqr)
                                 drawStuff()
                                 switchTurn(turn)
                                 return
@@ -218,12 +219,12 @@ def DoPlayerTurn(turn):
 
                     # Displays valid moves
                     else:
-                        if turn == 'white':
-                            folder = PieceMovement.whitepieces
-                        elif turn == 'black':
-                            folder = PieceMovement.blackpieces
+                        if turn == WHITE:
+                            folder = pm.whitepieces
+                        elif turn == BLACK:
+                            folder = pm.blackpieces
                         for piece in folder:
-                            if id(piece) == PieceMovement.boardlist[msqr]:
+                            if id(piece) == pm.boardlist[msqr]:
                                 drawMoves(msqr)
                                 temp = msqr
                                 break
@@ -232,7 +233,7 @@ def DoPlayerTurn(turn):
 def main():
     # Variables and such
     pygame.display.set_caption('Can you beat Shallow Blue in chess?')
-    PieceMovement.updateCastlingRights()
+    pm.updateCastlingRights()
     drawStuff()
 
     # Main game loop:
@@ -241,17 +242,17 @@ def main():
             checkType(event)
         # Checks for mate
         if mainState.turn != 'end':
-            mate_status = PieceMovement.isMated(mainState.turn)
+            mate_status = pm.isMated(mainState.turn)
         if mate_status:
             displayMessage(mate_status + "!", screenwidth / 2 - marginsize)
         # Checks for draw
-        draw_status = PieceMovement.isDraw() 
+        draw_status = pm.isDraw() 
         if draw_status:
             displayMessage(draw_status, screenwidth / 2 - 2*marginsize)
 
-        elif mainState.turn == 'white':
+        elif mainState.turn == WHITE:
             DoPlayerTurn(mainState.turn)
 
-        elif mainState.turn == 'black':
+        elif mainState.turn == BLACK:
             DoCompTurn(mainState.turn)
 main()

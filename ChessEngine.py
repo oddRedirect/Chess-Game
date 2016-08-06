@@ -3,6 +3,8 @@ import PieceMovement as pm
 from PieceMovement import PieceMovement, isSafe, isInCheck
 from PieceMovement import wk, wq, wb, wn, wr, wp
 from PieceMovement import bk, bq, bb, bn, br, bp
+from PieceMovement import WHITE, BLACK
+from PieceMovement import PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING
 
 # Global Constants:
 Pval = 1
@@ -18,15 +20,15 @@ NOISY_LOGGING = False
 
 # Assign a value to each piece
 for y in pm.allpieces:
-    if y.name == 'pawn':
+    if y.name == PAWN:
         y.value = Pval
-    elif y.name == 'knight':
+    elif y.name == KNIGHT:
         y.value = Nval
-    elif y.name == 'bishop':
+    elif y.name == BISHOP:
         y.value = Bval
-    elif y.name == 'rook':
+    elif y.name == ROOK:
         y.value = Rval
-    elif y.name == 'queen':
+    elif y.name == QUEEN:
         y.value = Qval
 
 
@@ -45,15 +47,15 @@ def isSafeWithParams(sqr, colour, *args):
 # Gives a numerical value for how good colour's position is
 def EvaluatePosition(colour):
     evalu = 0
-    whiteMate, blackMate = pm.isMated('white'), pm.isMated('black')
+    whiteMate, blackMate = pm.isMated(WHITE), pm.isMated(BLACK)
     BL = pm.boardlist
 
     # Check for draw
     if pm.isDraw():
         return 0
-    if colour == 'black' and whiteMate == "STALEMATE":
+    if colour == BLACK and whiteMate == "STALEMATE":
         return 0
-    if colour == 'white' and blackMate == "STALEMATE":
+    if colour == WHITE and blackMate == "STALEMATE":
         return 0
 
     # Calculate material imbalances
@@ -61,40 +63,40 @@ def EvaluatePosition(colour):
         evalu += y.value * len(y.piecelist)
         for p in y.piecelist:
             # Make sure pieces are safe
-            if y.name != 'pawn' and not(isSafe(p, 'white')):
+            if y.name != PAWN and not(isSafe(p, WHITE)):
                 evalu -= y.value/2 - 0.3
     for y in pm.blackpieces:
         evalu -= y.value * len(y.piecelist)
         #TODO: disregard king danger for isSafe here
         for p in y.piecelist:
-            if y.name != 'pawn' and not(isSafe(p, 'black')):
+            if y.name != PAWN and not(isSafe(p, BLACK)):
                 evalu += y.value/2 - 0.3
 
     for p in wp.piecelist:
         # Make sure pawns are safe
-        if not(isSafe(p, 'white')) and isSafe(p, 'black'):
+        if not(isSafe(p, WHITE)) and isSafe(p, BLACK):
             evalu -= 0.4
         # Passed pawns are GREAT
         #TODO: improve alorithm for determining value of passed pawns
         if p > 32 and BL[p+8] == 0 and BL[p+9] != id(bp) and BL[p+7] != id(bp):
                 evalu += p/8 - 3
     for p in bp.piecelist:
-        if not(isSafe(p, 'black')) and isSafe(p, 'white'):
+        if not(isSafe(p, BLACK)) and isSafe(p, WHITE):
             evalu += 0.4
         if p < 31 and BL[p-8] == 0 and BL[p-9] != id(wp) and BL[p-7] != id(wp):
                 evalu -= 4 - p/8
 
     # Checkmate is the ultimate goal
-    if isInCheck('white'):
+    if isInCheck(WHITE):
         evalu -= 0.5
         if whiteMate == 'CHECKMATE':
             evalu -= Kval
-    if isInCheck('black'):
+    if isInCheck(BLACK):
         evalu += 0.5
         if blackMate == 'CHECKMATE':
             evalu += Kval
 
-    if colour == 'black':
+    if colour == BLACK:
         evalu *= -1
 
     if isEndgame():
@@ -188,12 +190,12 @@ def EvaluateMiddleGame(colour):
         evalu += 0.3
 
     # Keep the f2/f7 square safe
-    if not(isSafe(53, 'black')) and isSafeWithParams(53, 'white', 'N', 'B'):
+    if not(isSafe(53, BLACK)) and isSafeWithParams(53, WHITE, 'N', 'B'):
         evalu += 0.5
-    if not(isSafe(13, 'white')) and isSafeWithParams(13, 'black', 'N', 'B'):
+    if not(isSafe(13, WHITE)) and isSafeWithParams(13, BLACK, 'N', 'B'):
         evalu -= 0.5
 
-    if colour == 'black':
+    if colour == BLACK:
         evalu *= -1
         
     return evalu
@@ -210,12 +212,12 @@ def FindBest(colour, plies=maxPlies, width=5):
     if width <= 0:
         width = 1
     
-    if colour == 'white':
+    if colour == WHITE:
         pieces = pm.whitepieces
-        opp = 'black'
-    elif colour == 'black':
+        opp = BLACK
+    elif colour == BLACK:
         pieces = pm.blackpieces
-        opp = 'white'
+        opp = WHITE
 
     topMoves = []
     default = Position()
@@ -305,7 +307,7 @@ def isEndgame():
 
 def EvaluateEndgame(colour):
     evalu = 0
-    if colour == 'white':
+    if colour == WHITE:
         king, oppKing = wk.piecelist[0], bk.piecelist[0]
     else:
         king, oppKing = bk.piecelist[0], wk.piecelist[0]
@@ -333,7 +335,7 @@ def EvaluateEndgame(colour):
 # Finds possible opening moves for black
 def OpeningMoves(colour, movenum, randnum):
     #TODO: Place opening moves into a dictionary of some sort
-    if movenum == 0 and colour == 'white':
+    if movenum == 0 and colour == WHITE:
         if randnum < 0.3:
             return 11, 27 #d4
         elif randnum < 0.6:
@@ -343,7 +345,7 @@ def OpeningMoves(colour, movenum, randnum):
         else:
             return 14, 22 #g3
 
-    if movenum == 1 and colour == 'black':
+    if movenum == 1 and colour == BLACK:
         if pm.boardlist[26] == id(wp):
             if randnum < 0.75:
                 return 50, 34 #c5
@@ -360,7 +362,7 @@ def OpeningMoves(colour, movenum, randnum):
             else:
                 return 52, 36
 
-    elif movenum == 2 and colour == 'black':
+    elif movenum == 2 and colour == BLACK:
         if pm.boardlist[27] == id(wp) and pm.boardlist[26] == id(wp):
             if pm.boardlist[35] == id(bp):
                 if randnum < 0.5:
@@ -375,7 +377,7 @@ def OpeningMoves(colour, movenum, randnum):
             if pm.boardlist[57] == id(bn) and pm.boardlist[36] == id(bp):
                 return 57, 42 #Nc6
 
-    elif movenum >= 3 and colour == 'black':
+    elif movenum >= 3 and colour == BLACK:
         if pm.boardlist[27] == id(wn) and pm.boardlist[62] == id(bn):
             if pm.boardlist[34] != id(bp) and pm.boardlist[36] != id(bp):
                 return 62, 45
