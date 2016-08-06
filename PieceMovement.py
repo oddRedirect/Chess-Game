@@ -21,6 +21,7 @@ class boardState:
     enPassant = None
     # Castling
     ws, wl, bs, bl = True, True, True, True
+    lastCapture, lastPawnMove = 0, 0
 
 curState = boardState()
 
@@ -103,8 +104,8 @@ def updatepieces():
 # Reverts the board to the starting position
 def resetboard():
     emptyboard()
-    boardlist[4] = id(wk) ## Idea is to use this approach for the entire boardlist, even in MovePiece
-    boardlist[3] = id(wq) ## Remove piecelist from Piece class eventually ... orrrr not
+    boardlist[4] = id(wk)
+    boardlist[3] = id(wq)
     boardlist[2], boardlist[5] = id(wb), id(wb)
     boardlist[1], boardlist[6] = id(wn), id(wn)
     boardlist[0], boardlist[7] = id(wr), id(wr)
@@ -198,9 +199,16 @@ def MovePiece(start, end):
         if j.colour == 'black':
             boardlist[end] = id(bq)
 
+    # Updates fields needed for 50-move-rule
+    curState.lastCapture += 1
+    curState.lastPawnMove += 1
+    if not m:
+        curState.lastCapture = 0
+
     curState.enPassant = None
     # Checks if En Passant is valid
     if j.name == 'pawn':
+        curState.lastPawnMove = 0
         s, e = start, end
         if abs(s-e) == 16:
             if j.colour == 'black':
@@ -560,11 +568,21 @@ def isInsufficient():
         return False
     return True
 
+
+# Returns true if no capture or pawn move has been made in the last 50 moves
+def isDrawByFifty():
+    if curState.lastCapture >= 100 or curState.lastPawnMove >= 100:
+        return True
+    return False
+
+
 # Checks whether the game is a draw
 def isDraw():
     if isInsufficient():
         return "INSUFFICIENT MATERIAL"
     if isRepitition():
         return "DRAW BY REPITITION"
+    if isDrawByFifty():
+        return "DRAW BY 50 MOVE RULE"
     return False
     
