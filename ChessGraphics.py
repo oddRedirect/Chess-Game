@@ -50,10 +50,10 @@ def checkType(event):
         mousex, mousey = event.pos
         if buttonx < mousex < buttonx + 75 and buttony < mousey < buttony + 12:
             resetState()
-            return
+            return True
         elif undox < mousex < undox + 75 and buttony < mousey < buttony + 12:
             UndoStuff()
-            return
+            return True
 
 
 # Draws a message above the board
@@ -172,6 +172,10 @@ def UndoStuff():
         pm.UndoMove()
         pm.UndoMove()
         drawStuff()
+    if mainState.movenumber == 1:
+        mainState.turn = WHITE
+    if mainState.movenumber != 0:
+        mainState.movenumber -= 1
 
 
 # Switches turn and increases move number
@@ -200,7 +204,8 @@ def DoPlayerTurn(turn):
     temp = -1
     while (True):
         for event in pygame.event.get():
-            checkType(event)
+            if checkType(event):
+                return
             if event.type == pygame.MOUSEBUTTONUP:
                 mousex, mousey = event.pos
                 msqr = squareClicked(mousex, mousey)
