@@ -330,53 +330,31 @@ def EvaluateEndgame(colour):
         evalu += 0.5
 
     return evalu
-                
+
+
+FirstMoves = {26: {(0, 0.3): (11, 27), (0.3, 0.6): (12, 28), (0.6, 0.9): (10, 26), (0.9, 1): (14, 22)}}
+SecondMoves = {26: {(0, 0.75): (50, 34), (0.75, 1): (52, 36)}, 27: {(0, 0.25): (62, 45), (0.25, 1): (51, 35)},
+               28: {(0, 0.5): (50, 34), (0.5, 1): (52, 36)}}
+ThirdMoves = {35: {(0, 0.5): (35, 26), (0.5, 1): (52, 44)}}
+openingDict = {0: FirstMoves, 1: SecondMoves, 4: ThirdMoves}
 
 # Finds possible opening moves for black
 def OpeningMoves(colour, movenum, randnum):
-    #TODO: Place opening moves into a dictionary of some sort
+    key = -1
     if movenum == 0 and colour == WHITE:
-        if randnum < 0.3:
-            return 11, 27 #d4
-        elif randnum < 0.6:
-            return 12, 28 #e4
-        elif randnum < 0.9:
-            return 10, 26 #c4
-        else:
-            return 14, 22 #g3
-
+        key, cPiece = 0, 0
     if movenum == 1 and colour == BLACK:
-        if pm.boardlist[26] == id(wp):
-            if randnum < 0.75:
-                return 50, 34 #c5
-            else:
-                return 52, 36 #e5
-        elif pm.boardlist[27] == id(wp):
-            if randnum < 0.25:
-                return 62, 45 #Nf6
-            else:
-                return 51, 35 #d5
-        elif pm.boardlist[28] == id(wp):
-            if randnum < 0.5:
-                return 50, 34
-            else:
-                return 52, 36
-
+        key, cPiece = 1, id(wp)
     elif movenum == 2 and colour == BLACK:
         if pm.boardlist[27] == id(wp) and pm.boardlist[26] == id(wp):
-            if pm.boardlist[35] == id(bp):
-                if randnum < 0.5:
-                    return 35, 26 #dxc4
-                else:
-                    return 52, 44 #e6
-            elif pm.boardlist[45] == id(bk):
+            if pm.boardlist[45] == id(bn):
                 return 52, 44
+            key, cPiece = 4, id(bp)
         if pm.boardlist[28] == id(wp) and pm.boardlist[21] == id(wn):
             if pm.boardlist[51] == id(bp) and pm.boardlist[34] == id(bp):
                 return 51, 43 #d6
             if pm.boardlist[57] == id(bn) and pm.boardlist[36] == id(bp):
                 return 57, 42 #Nc6
-
     elif movenum >= 3 and colour == BLACK:
         if pm.boardlist[27] == id(wn) and pm.boardlist[62] == id(bn):
             if pm.boardlist[34] != id(bp) and pm.boardlist[36] != id(bp):
@@ -384,6 +362,13 @@ def OpeningMoves(colour, movenum, randnum):
         if pm.boardlist[27] == id(wp) and pm.boardlist[26] == id(wp):
             if pm.boardlist[62] == id(bn):
                 return 62, 45
+    if key != -1:
+        moves = openingDict[key] # Maybe use (colour, movenum) as key
+        for cSqr in moves:
+            if pm.boardlist[cSqr] == cPiece:
+                for x in moves[cSqr]:
+                    if x[0] < randnum and randnum < x[1]:
+                        return moves[cSqr][x]
     default = FindBest(colour)
     return default.movestart, default.moveend
     
