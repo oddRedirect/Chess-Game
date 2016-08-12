@@ -32,27 +32,21 @@ curState = boardState()
 
 # White pieces:
 wk = Piece()
-wk.name = KING
 wk.picture = "Pieces/WhiteKing.png"
 
 wq = Piece()
-wq.name = QUEEN
 wq.picture = "Pieces/WhiteQueen.png"
 
 wb = Piece()
-wb.name = BISHOP
 wb.picture = "Pieces/WhiteBishop.png"
 
 wn = Piece()
-wn.name = KNIGHT
 wn.picture = "Pieces/WhiteKnight.png"
 
 wr = Piece()
-wr.name = ROOK
 wr.picture = "Pieces/WhiteRook.png"
 
 wp = Piece()
-wp.name = PAWN
 wp.picture = "Pieces/WhitePawn.png"
 
 whitepieces = [wk, wq, wb, wn, wr, wp]
@@ -61,32 +55,34 @@ for y in whitepieces:
 
 # Black pieces:
 bk = Piece()
-bk.name = KING
 bk.picture = "Pieces/BlackKing.png"
 
 bq = Piece()
-bq.name = QUEEN
 bq.picture = "Pieces/BlackQueen.png"
 
 bb = Piece()
-bb.name = BISHOP
 bb.picture = "Pieces/BlackBishop.png"
 
 bn = Piece()
-bn.name = KNIGHT
 bn.picture = "Pieces/BlackKnight.png"
 
 br = Piece()
-br.name = ROOK
 br.picture = "Pieces/BlackRook.png"
 
 bp = Piece()
-bp.name = PAWN
 bp.picture = "Pieces/BlackPawn.png"
 
 blackpieces = [bk, bq, bb, bn, br, bp]
 for y in blackpieces:
     y.colour = BLACK
+
+for lst in whitepieces, blackpieces:
+    lst[0].name = KING
+    lst[1].name = QUEEN
+    lst[2].name = BISHOP
+    lst[3].name = KNIGHT
+    lst[4].name = ROOK
+    lst[5].name = PAWN
 
 # Misc.
 allpieces = whitepieces + blackpieces

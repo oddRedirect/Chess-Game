@@ -46,16 +46,16 @@ def isSafeWithParams(sqr, colour, *args):
 
 # Gives a numerical value for how good colour's position is
 def EvaluatePosition(colour):
-    evalu = 0
+    evalu = 0.01
     whiteMate, blackMate = pm.isMated(WHITE), pm.isMated(BLACK)
     BL = pm.boardlist
 
     # Check for draw
     if pm.isDraw():
         return 0
-    if colour == BLACK and whiteMate == "STALEMATE":
+    if colour == BLACK and whiteMate and whiteMate[0] == 'S':
         return 0
-    if colour == WHITE and blackMate == "STALEMATE":
+    if colour == WHITE and blackMate and blackMate[0] == 'S':
         return 0
 
     # Calculate material imbalances
@@ -89,11 +89,11 @@ def EvaluatePosition(colour):
     # Checkmate is the ultimate goal
     if isInCheck(WHITE):
         evalu -= 0.5
-        if whiteMate == 'CHECKMATE':
+        if whiteMate and whiteMate[0] == 'C':
             evalu -= Kval
     if isInCheck(BLACK):
         evalu += 0.5
-        if blackMate == 'CHECKMATE':
+        if blackMate and blackMate[0] == 'C':
             evalu += Kval
 
     if colour == BLACK:
@@ -261,6 +261,8 @@ def FindBest(colour, plies=maxPlies, width=5):
         plies -= 1
         width -= 2
         for pos in topMoves:
+            if pos.evaluation == 0:
+                continue
             temp = pos.evaluation
             pm.MovePiece(pos.movestart, pos.moveend)
             oppTop = FindBest(opp, plies, width)
