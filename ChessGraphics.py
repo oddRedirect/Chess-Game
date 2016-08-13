@@ -64,6 +64,21 @@ def displayMessage(message, xcoord):
     mainState.turn = 'end'
 
 
+# Load an image and set it to the specified size
+def loadAndTransform(image, size):
+    loadedImage = pygame.image.load(image)
+    return pygame.transform.smoothscale(loadedImage, (size, size))
+
+
+def checkForDead(sqr):
+    piece = pm.pieceatsqr(sqr)
+    if piece:
+        if piece.colour == WHITE:
+            mainState.deadWhite.append(piece)
+        elif piece.colour == BLACK:
+            mainState.deadBlack.append(piece)
+
+
 # Draws the board to the screen
 def drawBoard():
     x, y = xcorner, ycorner
@@ -84,8 +99,7 @@ def drawBoard():
 def drawPieces():
     k = squaresize
     for p in pm.allpieces:
-        pieceImage = pygame.image.load(p.picture)
-        pieceImage = pygame.transform.smoothscale(pieceImage, (k, k))
+        pieceImage = loadAndTransform(p.picture, k)
         for sqr in p.piecelist:
             x = xcorner + (sqr % 8)*k
             y = ycorner + (7 - sqr / 8)*k 
@@ -111,9 +125,25 @@ def drawHighlight(sqr):
     x = xcorner + f * squaresize + 2
     y = ycorner + r * squaresize + 2
     pygame.draw.rect(screen, purple, (x, y, squaresize, squaresize))
+
+
+# Draws pieces that died on the battlefield
+def drawDead():
+    size = (xcorner - 4) / 4
+    def drawDeadHelper(i, picture, startx, starty, u):
+        pieceImage = loadAndTransform(picture, size)
+        k = i / 4
+        x, y = startx + ((i-(4*k))*size), starty + k*size*u
+        screen.blit(pieceImage, (x, y))
+    whitex, whitey = 4, marginsize
+    blackx, blacky = xcorner + boardsize + 4, boardsize - marginsize
+    for i, p in enumerate(mainState.deadWhite):
+        drawDeadHelper(i, p.picture, whitex, whitey, 1)
+    for i, p in enumerate(mainState.deadBlack):
+        drawDeadHelper(i, p.picture, blackx, blacky, -1)
     
 
-# Returns square clicked (as a number) or False if mouse was off board
+# Returns square clicked (as a number) or -1 if mouse was off board
 def squareClicked(mousex, mousey):
     x = mousex - xcorner
     y = mousey - ycorner
@@ -147,6 +177,7 @@ def drawStuff(sqr=-1):
     drawBoard()
     if sqr != -1:
         drawHighlight(sqr)
+    drawDead()
     drawPieces()
 
 
@@ -155,6 +186,8 @@ class GameState:
     movenumber = 0
     turn = WHITE
     randmove = random.random()
+    deadBlack = []
+    deadWhite = []
 
 mainState = GameState()
 
@@ -194,6 +227,7 @@ def DoCompTurn(turn):
     else:
         k = ChessEngine.FindBest(turn)
         start, end = k.movestart, k.moveend
+    checkForDead(end)
     pm.MovePiece(start, end)
     drawStuff(end)
     switchTurn(turn)
@@ -215,6 +249,7 @@ def DoPlayerTurn(turn):
                     if temp != -1:
                         for s in pm.PieceMovement(temp):
                             if msqr == s:
+                                checkForDead(msqr)
                                 pm.MovePiece(temp, msqr)
                                 drawStuff()
                                 switchTurn(turn)
