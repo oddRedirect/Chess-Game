@@ -70,13 +70,34 @@ def loadAndTransform(image, size):
     return pygame.transform.smoothscale(loadedImage, (size, size))
 
 
-def checkForDead(sqr):
-    piece = pm.pieceatsqr(sqr)
+def checkForDead(start, end):
+    piece = pm.pieceatsqr(end)
     if piece:
         if piece.colour == WHITE:
             mainState.deadWhite.append(piece)
         elif piece.colour == BLACK:
             mainState.deadBlack.append(piece)
+    elif abs(start-end) == 7 or abs(start-end) == 9:
+        if pm.pieceatsqr(start) == pm.wp:
+            mainState.deadBlack.append(pm.bp)
+        if pm.pieceatsqr(start) == pm.bp:
+            mainState.deadWhite.append(pm.wp)
+
+
+def reviveDead():
+     for deadList in mainState.deadWhite, mainState.deadBlack:
+        x = len(deadList)
+        if x > 0:
+            p = deadList[x-1]
+            c = deadList.count(p)
+            d = len(p.piecelist)
+            if p.name == pm.PAWN and c+d != 8:
+                deadList.pop()
+            elif p.name == pm.BISHOP or p.name == pm.ROOK or p.name == pm.KNIGHT:
+                if c+d != 2:
+                    deadList.pop()
+            elif p.name == pm.QUEEN and c+d != 1:
+                deadList.pop()
 
 
 # Draws the board to the screen
@@ -110,6 +131,7 @@ def drawPieces():
 # Draws the buttons below the board
 def buttonHelper(xcoord, text):
     x, y = xcoord, buttony
+    #TODO: Scale button size with screen size
     pygame.draw.rect(screen, boardcolour, (x, y, 75, 12), 2)
     message = ButtonFont.render(text, 1, blue)
     screen.blit(message, (x+2, y+2))
@@ -195,6 +217,8 @@ def resetState():
     mainState.randmove = random.random()
     mainState.movenumber = 0
     mainState.turn = WHITE
+    mainState.deadBlack = []
+    mainState.deadWhite = []
     pm.resetgame()
     drawStuff()
 
@@ -204,6 +228,7 @@ def UndoStuff():
     if mainState.turn != 'end':
         pm.UndoMove()
         pm.UndoMove()
+        reviveDead()
         drawStuff()
     if mainState.movenumber == 1:
         mainState.turn = WHITE
@@ -227,7 +252,7 @@ def DoCompTurn(turn):
     else:
         k = ChessEngine.FindBest(turn)
         start, end = k.movestart, k.moveend
-    checkForDead(end)
+    checkForDead(start, end)
     pm.MovePiece(start, end)
     drawStuff(end)
     switchTurn(turn)
@@ -249,7 +274,7 @@ def DoPlayerTurn(turn):
                     if temp != -1:
                         for s in pm.PieceMovement(temp):
                             if msqr == s:
-                                checkForDead(msqr)
+                                checkForDead(temp, msqr)
                                 pm.MovePiece(temp, msqr)
                                 drawStuff()
                                 switchTurn(turn)
