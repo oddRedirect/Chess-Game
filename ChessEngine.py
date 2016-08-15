@@ -5,6 +5,7 @@ from PieceMovement import wk, wq, wb, wn, wr, wp
 from PieceMovement import bk, bq, bb, bn, br, bp
 from PieceMovement import WHITE, BLACK
 from PieceMovement import PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING
+from functools import partial
 
 # Global Constants:
 Pval = 1
@@ -333,44 +334,42 @@ def EvaluateEndgame(colour):
 
     return evalu
 
+def pOn(s, p): return pm.boardlist[s] == id(p)
+def queensGambit():
+    if pm.boardlist[27] == id(wp) and pm.boardlist[26] == id(wp):
+        return pm.boardlist[35] == id(bp)
+def sicilian():
+    if pm.boardlist[28] == id(wp) and pm.boardlist[21] == id(wn):
+        return pm.boardlist[51] == id(bp) and pm.boardlist[34] == id(bp)
+def kingsPawn():
+    if pm.boardlist[28] == id(wp) and pm.boardlist[21] == id(wn):
+        return pm.boardlist[57] == id(bn) and pm.boardlist[36] == id(bp)
 
-FirstMoves = {26: {(0, 0.3): (11, 27), (0.3, 0.6): (12, 28), (0.6, 0.9): (10, 26), (0.9, 1): (14, 22)}}
-SecondMoves = {26: {(0, 0.75): (50, 34), (0.75, 1): (52, 36)}, 27: {(0, 0.25): (62, 45), (0.25, 1): (51, 35)},
-               28: {(0, 0.5): (50, 34), (0.5, 1): (52, 36)}}
-ThirdMoves = {35: {(0, 0.5): (35, 26), (0.5, 1): (52, 44)}}
-openingDict = {0: FirstMoves, 1: SecondMoves, 4: ThirdMoves}
+FirstMoves = [(True, {(0, 0.3): (11, 27), (0.3, 0.6): (12, 28), (0.6, 0.9): (10, 26), (0.9, 1): (14, 22)})]
+SecondMoves = [(partial(pOn, 26, wp), {(0, 0.75): (50, 34), (0.75, 1): (52, 36)}),
+               (partial(pOn, 27, wp), {(0, 0.25): (62, 45), (0.25, 1): (51, 35)}),
+               (partial(pOn, 28, wp), {(0, 0.5): (50, 34), (0.5, 1): (52, 36)})]
+ThirdMoves = [(queensGambit, {(0, 0.5): (35, 26), (0.5, 1): (52, 44)}),
+              (sicilian, {(0, 1): (51, 43)}), (kingsPawn, {(0, 1): (57, 42)})]
+# Tuple-keyed dictionary of lists of tuples of (function, tuple-keyed dictionary of tuples)
+openingDict = {(WHITE, 0): FirstMoves, (BLACK, 1): SecondMoves, (BLACK, 2): ThirdMoves}
 
 # Finds possible opening moves for black
 def OpeningMoves(colour, movenum, randnum):
-    key = -1
-    if movenum == 0 and colour == WHITE:
-        key, cPiece = 0, 0
-    if movenum == 1 and colour == BLACK:
-        key, cPiece = 1, id(wp)
-    elif movenum == 2 and colour == BLACK:
-        if pm.boardlist[27] == id(wp) and pm.boardlist[26] == id(wp):
-            if pm.boardlist[45] == id(bn):
-                return 52, 44
-            key, cPiece = 4, id(bp)
-        if pm.boardlist[28] == id(wp) and pm.boardlist[21] == id(wn):
-            if pm.boardlist[51] == id(bp) and pm.boardlist[34] == id(bp):
-                return 51, 43 #d6
-            if pm.boardlist[57] == id(bn) and pm.boardlist[36] == id(bp):
-                return 57, 42 #Nc6
-    elif movenum >= 3 and colour == BLACK:
+    if movenum >= 3 and colour == BLACK:
         if pm.boardlist[27] == id(wn) and pm.boardlist[62] == id(bn):
             if pm.boardlist[34] != id(bp) and pm.boardlist[36] != id(bp):
                 return 62, 45
         if pm.boardlist[27] == id(wp) and pm.boardlist[26] == id(wp):
             if pm.boardlist[62] == id(bn):
                 return 62, 45
-    if key != -1:
-        moves = openingDict[key] # Maybe use (colour, movenum) as key
-        for cSqr in moves:
-            if pm.boardlist[cSqr] == cPiece:
-                for x in moves[cSqr]:
+    if (colour, movenum) in openingDict:
+        moves = openingDict[(colour, movenum)]
+        for (boolKey, m) in moves:
+            if boolKey(): # Calls the bool function in the moves list
+                for x in m:
                     if x[0] < randnum and randnum < x[1]:
-                        return moves[cSqr][x]
+                        return m[x]
     default = FindBest(colour)
     return default.movestart, default.moveend
     
