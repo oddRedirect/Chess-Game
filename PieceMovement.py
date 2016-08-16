@@ -13,12 +13,6 @@ class Piece:
     picture = ""
     value = 0
 
-    def loop(self):
-        self.piecelist = []
-        for num in range(64):
-            if boardlist[num] == id(self):
-                self.piecelist.append(num)
-
 
 class boardState:
     prevBoard = None
@@ -98,7 +92,14 @@ def emptyboard():
 # Adds the positions of all pieces on the board to their respective objects
 def updatepieces():
     for y in allpieces:
-            y.loop()
+        y.piecelist = []
+    for num, piece in enumerate(boardlist):
+        if not(piece):
+            continue
+        for y in allpieces:
+            if id(y) == piece:
+                y.piecelist.append(num)
+                break
 
 
 # Reverts the board to the starting position

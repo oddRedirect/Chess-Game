@@ -131,7 +131,7 @@ def drawPieces():
 # Draws the buttons below the board
 def buttonHelper(xcoord, text):
     x, y = xcoord, buttony
-    #TODO: Scale button size with screen size
+    #TODO: Scale button size with screen size // Add resign button
     pygame.draw.rect(screen, boardcolour, (x, y, 75, 12), 2)
     message = ButtonFont.render(text, 1, blue)
     screen.blit(message, (x+2, y+2))

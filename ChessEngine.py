@@ -6,6 +6,7 @@ from PieceMovement import bk, bq, bb, bn, br, bp
 from PieceMovement import WHITE, BLACK
 from PieceMovement import PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING
 from functools import partial
+import cProfile
 
 # Global Constants:
 Pval = 1
@@ -373,3 +374,4 @@ def OpeningMoves(colour, movenum, randnum):
     default = FindBest(colour)
     return default.movestart, default.moveend
     
+#cProfile.run('FindBest("w")')
