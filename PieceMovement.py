@@ -80,7 +80,7 @@ for lst in whitepieces, blackpieces:
 
 # Misc.
 allpieces = whitepieces + blackpieces
-boardlist = range(64)
+boardlist = range(70) # Just to be safe
 
 
 # Clears the board of all pieces
@@ -492,14 +492,14 @@ def BigPieceDanger(sqr, colour):
             return True
 
 # Determines whether a move can get you killed
-def isSafe(sqr, colour):
-    if PawnDanger(sqr, colour):
+def isSafe(sqr, colour, *exclude):
+    if not('P' in exclude) and PawnDanger(sqr, colour):
         return False
-    if KnightDanger(sqr, colour):
+    if not('N' in exclude) and KnightDanger(sqr, colour):
         return False
-    if KingDanger(sqr, colour):
+    if not('K' in exclude) and KingDanger(sqr, colour):
         return False
-    if BigPieceDanger(sqr, colour):
+    if not('BIG' in exclude) and BigPieceDanger(sqr, colour):
         return False
     return True
 
@@ -566,7 +566,7 @@ def isInsufficient():
 
 # Returns true if no capture or pawn move has been made in the last 50 moves
 def isDrawByFifty():
-    if curState.lastCapture >= 100 or curState.lastPawnMove >= 100:
+    if curState.lastCapture >= 100 and curState.lastPawnMove >= 100:
         return True
     return False
 

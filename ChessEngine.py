@@ -34,18 +34,6 @@ for y in pm.allpieces:
         y.value = Qval
 
 
-def isSafeWithParams(sqr, colour, *args):
-    if 'P' in args and pm.PawnDanger(sqr, colour):
-        return False
-    if 'N' in args and pm.KnightDanger(sqr, colour):
-        return False
-    if 'K' in args and pm.KingDanger(sqr, colour):
-        return False
-    if 'B' in args and pm.BigPieceDanger(sqr, colour):
-        return False
-    return True
-
-
 # Gives a numerical value for how good colour's position is
 def EvaluatePosition(colour):
     evalu = 0.01
@@ -65,28 +53,13 @@ def EvaluatePosition(colour):
         evalu += y.value * len(y.piecelist)
         for p in y.piecelist:
             # Make sure pieces are safe
-            if y.name != PAWN and not(isSafe(p, WHITE)):
+            if y.name != PAWN and not(isSafe(p, WHITE, 'K')):
                 evalu -= y.value/2 - 0.3
     for y in pm.blackpieces:
         evalu -= y.value * len(y.piecelist)
-        #TODO: disregard king danger for isSafe here
         for p in y.piecelist:
-            if y.name != PAWN and not(isSafe(p, BLACK)):
+            if y.name != PAWN and not(isSafe(p, BLACK, 'K')):
                 evalu += y.value/2 - 0.3
-
-    for p in wp.piecelist:
-        # Make sure pawns are safe
-        if not(isSafe(p, WHITE)) and isSafe(p, BLACK):
-            evalu -= 0.4
-        # Passed pawns are GREAT
-        #TODO: improve alorithm for determining value of passed pawns
-        if p > 32 and BL[p+8] == 0 and BL[p+9] != id(bp) and BL[p+7] != id(bp):
-                evalu += p/8 - 3
-    for p in bp.piecelist:
-        if not(isSafe(p, BLACK)) and isSafe(p, WHITE):
-            evalu += 0.4
-        if p < 31 and BL[p-8] == 0 and BL[p-9] != id(wp) and BL[p-7] != id(wp):
-                evalu -= 4 - p/8
 
     # Checkmate is the ultimate goal
     if isInCheck(WHITE):
@@ -192,9 +165,9 @@ def EvaluateMiddleGame(colour):
         evalu += 0.3
 
     # Keep the f2/f7 square safe
-    if not(isSafe(53, BLACK)) and isSafeWithParams(53, WHITE, 'N', 'B'):
+    if not(isSafe(53, BLACK)) and isSafe(53, WHITE, 'P', 'K'):
         evalu += 0.5
-    if not(isSafe(13, WHITE)) and isSafeWithParams(13, BLACK, 'N', 'B'):
+    if not(isSafe(13, WHITE)) and isSafe(13, BLACK, 'P', 'K'):
         evalu -= 0.5
 
     if colour == BLACK:
@@ -311,6 +284,8 @@ def isEndgame():
 
 def EvaluateEndgame(colour):
     evalu = 0
+    BL = pm.boardlist
+
     if colour == WHITE:
         king, oppKing = wk.piecelist[0], bk.piecelist[0]
     else:
@@ -333,6 +308,20 @@ def EvaluateEndgame(colour):
     if hasOpposition(king, oppKing):
         evalu += 0.5
 
+    for p in wp.piecelist:
+        # Make sure pawns are safe
+        if not(isSafe(p, WHITE)) and isSafe(p, BLACK):
+            evalu -= 0.4
+        # Passed pawns are GREAT
+        #TODO: improve alorithm for determining value of passed pawns
+        if p >= 24 and BL[p+8] == 0 and BL[p+9] != id(bp) and BL[p+7] != id(bp):
+                evalu += p/8 - 4
+    for p in bp.piecelist:
+        if not(isSafe(p, BLACK)) and isSafe(p, WHITE):
+            evalu += 0.4
+        if p <= 39 and BL[p-8] == 0 and BL[p-9] != id(wp) and BL[p-7] != id(wp):
+                evalu -= 5 - p/8
+
     return evalu
 
 def pOn(s, p): return pm.boardlist[s] == id(p)
@@ -346,7 +335,7 @@ def kingsPawn():
     if pm.boardlist[28] == id(wp) and pm.boardlist[21] == id(wn):
         return pm.boardlist[57] == id(bn) and pm.boardlist[36] == id(bp)
 
-FirstMoves = [(True, {(0, 0.3): (11, 27), (0.3, 0.6): (12, 28), (0.6, 0.9): (10, 26), (0.9, 1): (14, 22)})]
+FirstMoves = [(lambda: True, {(0, 0.3): (11, 27), (0.3, 0.6): (12, 28), (0.6, 0.9): (10, 26), (0.9, 1): (14, 22)})]
 SecondMoves = [(partial(pOn, 26, wp), {(0, 0.75): (50, 34), (0.75, 1): (52, 36)}),
                (partial(pOn, 27, wp), {(0, 0.25): (62, 45), (0.25, 1): (51, 35)}),
                (partial(pOn, 28, wp), {(0, 0.5): (50, 34), (0.5, 1): (52, 36)})]
