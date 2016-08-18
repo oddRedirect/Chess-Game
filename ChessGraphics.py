@@ -24,11 +24,12 @@ else:
     dx, dy = 0, (screenheight - screenwidth)/2
 xcorner, ycorner = dx + marginsize, dy + marginsize
 boardsize = min(screenheight, screenwidth) - 2 * marginsize
-
 squaresize = boardsize / 8
-buttonx = screenwidth / 2 - marginsize
+
+buttonWidth, buttonHeight = 75, 12
+buttonx = screenwidth / 2 - buttonWidth / 2
 buttony = screenheight - 3*(marginsize / 4)
-undox = buttonx + 100
+undox, flipx = buttonx + 100, buttonx - 100
 
 pygame.init()
 screen = pygame.display.set_mode((screenwidth, screenheight))
@@ -38,7 +39,10 @@ ButtonFont = pygame.font.SysFont("comic sans", 15)
 
 # helper to obtain file and rank
 def fileAndRank(sqr):
-    return sqr%8, 7 - sqr/8
+    if mainState.FLIP:
+        return 7 - sqr%8, sqr/8
+    else:
+        return sqr%8, 7 - sqr/8
 
 
 def checkType(event):
@@ -48,11 +52,15 @@ def checkType(event):
     # Reset the game if 'new game' selected
     if event.type == pygame.MOUSEBUTTONUP:
         mousex, mousey = event.pos
-        if buttonx < mousex < buttonx + 75 and buttony < mousey < buttony + 12:
+        if buttonx < mousex < buttonx + buttonWidth and buttony < mousey < buttony + buttonHeight:
             resetState()
             return True
-        elif undox < mousex < undox + 75 and buttony < mousey < buttony + 12:
+        elif undox < mousex < undox + buttonWidth and buttony < mousey < buttony + buttonHeight:
             UndoStuff()
+            return True
+        elif flipx < mousex < flipx + buttonWidth and buttony < mousey < buttony + buttonHeight:
+            mainState.FLIP = not(mainState.FLIP)
+            drawStuff()
             return True
 
 
@@ -89,8 +97,7 @@ def reviveDead():
         x = len(deadList)
         if x > 0:
             p = deadList[x-1]
-            c = deadList.count(p)
-            d = len(p.piecelist)
+            c, d =  deadList.count(p), len(p.piecelist)
             if p.name == pm.PAWN and c+d != 8:
                 deadList.pop()
             elif p.name == pm.BISHOP or p.name == pm.ROOK or p.name == pm.KNIGHT:
@@ -107,8 +114,9 @@ def drawBoard():
     k = squaresize
     pygame.draw.rect(screen, boardcolour, (x, y, size, size), 3)
     for sqr in range(64):
-        sx = x + (sqr % 8)*k + 2 # Add 2 to centre the board
-        sy = y + (7 - sqr / 8)*k + 2
+        f, r = fileAndRank(sqr)
+        sx = x + f*k + 2 # Add 2 to centre the board
+        sy = y + r*k + 2
         a, b = sqr/8, sqr%2
         if a%2 == b:
             pygame.draw.rect(screen, brown, (sx, sy, k, k))
@@ -122,8 +130,9 @@ def drawPieces():
     for p in pm.allpieces:
         pieceImage = loadAndTransform(p.picture, k)
         for sqr in p.piecelist:
-            x = xcorner + (sqr % 8)*k
-            y = ycorner + (7 - sqr / 8)*k 
+            f, r = fileAndRank(sqr)
+            x = xcorner + f*k
+            y = ycorner + r*k 
             screen.blit(pieceImage, (x, y))
     pygame.display.update()
 
@@ -131,14 +140,15 @@ def drawPieces():
 # Draws the buttons below the board
 def buttonHelper(xcoord, text):
     x, y = xcoord, buttony
-    #TODO: Scale button size with screen size // Add resign button
-    pygame.draw.rect(screen, boardcolour, (x, y, 75, 12), 2)
+    pygame.draw.rect(screen, boardcolour, (x, y, buttonWidth, buttonHeight), 2)
     message = ButtonFont.render(text, 1, blue)
-    screen.blit(message, (x+2, y+2))
+    messagex = xcoord + 75//2 - ((len(text) * 75//11) / 2)
+    screen.blit(message, (messagex , y+3))
 
 def drawButtons():
     buttonHelper(buttonx, "NEW GAME")
-    buttonHelper(undox, "UNDO")
+    buttonHelper(undox, "UNDO ")
+    buttonHelper(flipx, "FLIP")
     
 
 # Highlights the specified square
@@ -175,6 +185,8 @@ def squareClicked(mousex, mousey):
         fil = x // k
         rank = y // k
         sqr = 8*(7-rank) + fil
+        if mainState.FLIP:
+            sqr = 63 - (8*(7-rank) + fil)
         return sqr
     return -1
 
@@ -210,13 +222,14 @@ class GameState:
     randmove = random.random()
     deadBlack = []
     deadWhite = []
+    FLIP = False
 
 mainState = GameState()
 
 def resetState():
+    global mainState
+    mainState = GameState()
     mainState.randmove = random.random()
-    mainState.movenumber = 0
-    mainState.turn = WHITE
     mainState.deadBlack = []
     mainState.deadWhite = []
     pm.resetgame()
