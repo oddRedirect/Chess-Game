@@ -175,7 +175,7 @@ def pawnPromoted(end):
 
 
 # Moves the piece on start to end
-def MovePiece(start, end):
+def MovePiece(start, end, update=True):
     j = pieceatsqr(start)
     m = pieceatsqr(end)
 
@@ -220,7 +220,8 @@ def MovePiece(start, end):
                 elif j.colour == BLACK:
                     boardlist[e+8] = 0
 
-    updatepieces()
+    if update:
+        updatepieces()
     updateCastlingRights()
 
 
@@ -241,7 +242,7 @@ def updateCastlingRights():
 
 
 # Undoes the previous move made
-def UndoMove():
+def UndoMove(update=True):
     global curState
     global boardlist
     if curState.prevState == None:
@@ -249,8 +250,9 @@ def UndoMove():
     
     boardlist = curState.prevBoard
     curState = curState.prevState
-        
-    updatepieces()
+    
+    if update:    
+        updatepieces()
 
     
 #helper
@@ -432,17 +434,17 @@ def PieceMovement(i):
 
     def MoveFilterer(x):
         # Make sure we don't have friendly fire
-        if boardlist[x] != 0 and (pieceatsqr(x)).colour == j.colour:
+        if boardlist[x] and (pieceatsqr(x)).colour == j.colour:
             return False
         # Cannot castle out of check
         if j.name == KING and abs(x-i) == 2 and isInCheck(j.colour):
             return False
         legalMove = True
-        MovePiece(i, x)
+        MovePiece(i, x, update=False)
         # Cannot move into check
-        if isInCheck(j.colour):
+        if isInCheckMod(j.colour):
            legalMove = False 
-        UndoMove()
+        UndoMove(update=False)
         return legalMove
 
     return filter(MoveFilterer, p)
@@ -508,8 +510,21 @@ def isSafe(sqr, colour, *exclude):
 def isInCheck(colour):
     if colour == WHITE:
         kingsqr = wk.piecelist[0]
-    if colour == BLACK:
+    elif colour == BLACK:
         kingsqr = bk.piecelist[0]
+    return not(isSafe(kingsqr, colour))
+
+
+# same as isInCheck except it manually finds kingsqr
+def isInCheckMod(colour):
+    if colour == WHITE:
+        king = id(wk)
+    elif colour == BLACK:
+        king = id(bk)
+    for s in range(64):
+        if boardlist[s] == king:
+            kingsqr = s
+            break
     return not(isSafe(kingsqr, colour))
 
 
