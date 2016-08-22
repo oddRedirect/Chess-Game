@@ -61,6 +61,20 @@ def EvaluatePosition(colour):
             if y.name != PAWN and not(isSafe(p, BLACK, 'K')):
                 evalu += y.value/2 - 0.3
 
+    for p in wp.piecelist:
+        # Make sure pawns are safe
+        if not(isSafe(p, WHITE)) and isSafe(p, BLACK):
+            evalu -= 0.4
+        # Passed pawns are GREAT
+        #TODO: improve alorithm for determining value of passed pawns
+        if p >= 24 and BL[p+8] == 0 and BL[p+9] != id(bp) and BL[p+7] != id(bp):
+                evalu += p/8 - 4
+    for p in bp.piecelist:
+        if not(isSafe(p, BLACK)) and isSafe(p, WHITE):
+            evalu += 0.4
+        if p <= 39 and BL[p-8] == 0 and BL[p-9] != id(wp) and BL[p-7] != id(wp):
+                evalu -= 5 - p/8
+
     # Checkmate is the ultimate goal
     if isInCheck(WHITE):
         evalu -= 0.5
@@ -207,17 +221,19 @@ def FindBest(colour, plies=maxPlies, width=5):
                 cur.movestart = start
                 cur.moveend = end
 
+                i = pm.pieceatsqr(end)
+
                 pm.MovePiece(start, end)
                 cur.evaluation = EvaluatePosition(colour)
-                pm.UndoMove()
 
-                i = pm.pieceatsqr(end)
                 # Don't hang pieces unless you need to
                 if not(i) and not(isSafe(end, colour)) and isSafe(end, opp):
                     cur.evaluation -= p.value
                 # No kamikaze allowed
                 elif i and i.value < p.value and not(isSafe(end, colour)):
                     cur.evaluation -= p.value
+
+                pm.UndoMove()
 
                 if len(topMoves) < width:
                     topMoves.append(cur)
@@ -229,7 +245,6 @@ def FindBest(colour, plies=maxPlies, width=5):
                 # Return right away if a mate is found
                 if cur.evaluation >= mateThreshold:
                     return cur
-                    
 
     #TODO: Use a helper function or a loop instead
     if plies > 1:
@@ -243,7 +258,8 @@ def FindBest(colour, plies=maxPlies, width=5):
             oppTop = FindBest(opp, plies, width)
             pos.evaluation = (-1) * oppTop.evaluation
             if NOISY_LOGGING and plies == maxPlies - 1:
-                print oppTop.moveend
+                print colour
+                print oppTop.moveend, "(", pos.evaluation, ")"
                 print pos.movestart, "->", pos.moveend
                 print temp, ";", pos.evaluation
             pm.UndoMove()
@@ -259,14 +275,17 @@ def FindBest(colour, plies=maxPlies, width=5):
 # returns True if kingpos has the opposition against the enemy king
 def hasOpposition(kingpos, opp_pos):
     a, b = kingpos, opp_pos
-    #TODO: check opposition for corners (if b in corners...)
-    corners = [0, 7, 56, 63]
     if abs(a-b) == 16 or (a/8 == b/8 and abs(a-b) == 2):
         return True
     elif abs(a-b) == 32 or (a/8 == b/8 and abs(a-b) == 4):
         return True
     elif abs(a-b) == 48 or (a/8 == b/8 and abs(a-b) == 6):
         return True
+    # Check opposition for corners
+    elif (b==0 or b==63) and abs(a-b) == 17:
+          return True
+    elif (b==7 or b==56) and abs(a-b) == 15:
+          return True
     return False
 
 
@@ -308,20 +327,6 @@ def EvaluateEndgame(colour):
     if hasOpposition(king, oppKing):
         evalu += 0.5
 
-    for p in wp.piecelist:
-        # Make sure pawns are safe
-        if not(isSafe(p, WHITE)) and isSafe(p, BLACK):
-            evalu -= 0.4
-        # Passed pawns are GREAT
-        #TODO: improve alorithm for determining value of passed pawns
-        if p >= 24 and BL[p+8] == 0 and BL[p+9] != id(bp) and BL[p+7] != id(bp):
-                evalu += p/8 - 4
-    for p in bp.piecelist:
-        if not(isSafe(p, BLACK)) and isSafe(p, WHITE):
-            evalu += 0.4
-        if p <= 39 and BL[p-8] == 0 and BL[p-9] != id(wp) and BL[p-7] != id(wp):
-                evalu -= 5 - p/8
-
     return evalu
 
 def pOn(s, p): return pm.boardlist[s] == id(p)
@@ -362,5 +367,8 @@ def OpeningMoves(colour, movenum, randnum):
                         return m[x]
     default = FindBest(colour)
     return default.movestart, default.moveend
-    
-#cProfile.run('FindBest("w")')
+
+#pm.MovePiece(12, 28)
+#pm.MovePiece(52, 36)
+#pm.MovePiece(3, 12)
+#cProfile.run('FindBest("b")')
