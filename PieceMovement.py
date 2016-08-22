@@ -3,8 +3,7 @@ import copy
 
 # Global Constants
 WHITE, BLACK = 'w', 'b'
-PAWN, BISHOP, KNIGHT = 'p', 'b', 'n'
-ROOK, QUEEN, KING = 'r', 'q', 'k'
+PAWN, BISHOP, KNIGHT, ROOK, QUEEN, KING = 'p', 'b', 'n', 'r', 'q', 'k'
 
 class Piece:
     piecelist = []
@@ -133,16 +132,12 @@ def resetgame():
 
 # Converts sqr to a number for ease of calculation (sqr is a string coord)
 def coordtonum(sqr):
-    j = ord(sqr[0]) - 97
-    return 8 * (int(sqr[1]) - 1) + j
+    return 8 * (int(sqr[1]) - 1) + ord(sqr[0]) - 97
 
 
 # Converts num back to a coordinate
 def numtocoord(num):
-    q = num % 8
-    n = (num / 8) + 1
-    m = chr(q + 97)
-    return m + str(n)
+    return chr(num%8 + 97) + str((num/8)+1)
 
 
 # Returns the piece on square num
@@ -167,9 +162,7 @@ def ChangeVar(start, end):
 def pawnPromoted(end):
     s = numtocoord(end)
     pce = pieceatsqr(end)
-    if s[1] == '8' and pce == wp:
-        return True
-    if s[1] == '1' and pce == bp:
+    if (s[1] == '8' and pce == wp) or (s[1] == '1' and pce == bp):
         return True
     return False
 
@@ -200,8 +193,7 @@ def MovePiece(start, end, update=True):
     # Updates fields needed for 50-move-rule
     curState.lastCapture += 1
     curState.lastPawnMove += 1
-    if m:
-        curState.lastCapture = 0
+    if m: curState.lastCapture = 0
 
     curState.enPassant = None
     # Checks if En Passant is valid
@@ -220,8 +212,7 @@ def MovePiece(start, end, update=True):
                 elif j.colour == BLACK:
                     boardlist[e+8] = 0
 
-    if update:
-        updatepieces()
+    if update: updatepieces()
     updateCastlingRights()
 
 
@@ -251,8 +242,7 @@ def UndoMove(update=True):
     boardlist = curState.prevBoard
     curState = curState.prevState
     
-    if update:    
-        updatepieces()
+    if update: updatepieces()
 
     
 #helper
@@ -375,16 +365,13 @@ def PieceMovement(i):
         p = kingMovement(i)
         # Castling
         if (j.colour == WHITE and curState.ws) or (j.colour == BLACK and curState.bs):
-            a = pieceatsqr(i + 1)
-            b = pieceatsqr(i + 2)
+            a, b = pieceatsqr(i + 1), pieceatsqr(i + 2)
             if not a and not b:
                 # Cannot castle through check
                 if isSafe(i+1, j.colour) and isSafe(i+2, j.colour):
                     p.append(i + 2)
         if (j.colour == WHITE and curState.wl) or (j.colour == BLACK and curState.bl):
-            a = pieceatsqr(i - 1)
-            b = pieceatsqr(i - 2)
-            c = pieceatsqr(i - 3)
+            a, b, c = pieceatsqr(i - 1), pieceatsqr(i - 2), pieceatsqr(i - 3)
             if not(a) and not(b) and not(c):
                 if isSafe(i-1, j.colour) and isSafe(i-2, j.colour) and isSafe(i-3, j.colour):
                     p.append(i - 2)    
