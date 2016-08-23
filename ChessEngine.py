@@ -51,29 +51,17 @@ def EvaluatePosition(colour):
     # Calculate material imbalances
     for y in pm.whitepieces:
         evalu += y.value * len(y.piecelist)
+        if y.name == PAWN: continue
         for p in y.piecelist:
             # Make sure pieces are safe
-            if y.name != PAWN and not(isSafe(p, WHITE, 'K')):
+            if not(isSafe(p, WHITE, 'K')):
                 evalu -= y.value/2 - 0.3
     for y in pm.blackpieces:
         evalu -= y.value * len(y.piecelist)
+        if y.name == PAWN: continue
         for p in y.piecelist:
-            if y.name != PAWN and not(isSafe(p, BLACK, 'K')):
+            if not(isSafe(p, BLACK, 'K')):
                 evalu += y.value/2 - 0.3
-
-    for p in wp.piecelist:
-        # Make sure pawns are safe
-        if not(isSafe(p, WHITE)) and isSafe(p, BLACK):
-            evalu -= 0.4
-        # Passed pawns are GREAT
-        #TODO: improve alorithm for determining value of passed pawns
-        if p >= 24 and BL[p+8] == 0 and BL[p+9] != id(bp) and BL[p+7] != id(bp):
-                evalu += p/8 - 4
-    for p in bp.piecelist:
-        if not(isSafe(p, BLACK)) and isSafe(p, WHITE):
-            evalu += 0.4
-        if p <= 39 and BL[p-8] == 0 and BL[p-9] != id(wp) and BL[p-7] != id(wp):
-                evalu -= 5 - p/8
 
     # Checkmate is the ultimate goal
     if isInCheck(WHITE):
@@ -214,25 +202,25 @@ def FindBest(colour, plies=maxPlies, width=5):
 
     def e(pos): return pos.evaluation
 
+    def checkSafety(i, end):
+        # Don't hang pieces unless you need to
+        if not(i) and not(isSafe(end, colour)) and isSafe(end, opp):
+            cur.evaluation -= p.value
+        # No kamikaze allowed
+        elif i and i.value < p.value and not(isSafe(end, colour)):
+            cur.evaluation -= p.value
+
     for p in pieces:
         for start in p.piecelist:
             for end in PieceMovement(start):
                 cur = Position()
-                cur.movestart = start
-                cur.moveend = end
+                cur.movestart, cur.moveend = start, end
 
-                i = pm.pieceatsqr(end)
+                i = pm.pieceatsqr(end) # Executes before piece is moved
 
                 pm.MovePiece(start, end)
                 cur.evaluation = EvaluatePosition(colour)
-
-                # Don't hang pieces unless you need to
-                if not(i) and not(isSafe(end, colour)) and isSafe(end, opp):
-                    cur.evaluation -= p.value
-                # No kamikaze allowed
-                elif i and i.value < p.value and not(isSafe(end, colour)):
-                    cur.evaluation -= p.value
-
+                checkSafety(i, end)
                 pm.UndoMove()
 
                 if len(topMoves) < width:
@@ -305,6 +293,23 @@ def EvaluateEndgame(colour):
     evalu = 0
     BL = pm.boardlist
 
+    for p in wp.piecelist:
+        # Make sure pawns are safe
+        if not(isSafe(p, WHITE)) and isSafe(p, BLACK):
+            evalu -= 0.4
+        # Passed pawns are GREAT
+        #TODO: improve alorithm for determining value of passed pawns
+        if p >= 24 and BL[p+8] == 0 and BL[p+9] != id(bp) and BL[p+7] != id(bp):
+            evalu += p/8 - 4
+    for p in bp.piecelist:
+        if not(isSafe(p, BLACK)) and isSafe(p, WHITE):
+            evalu += 0.4
+        if p <= 39 and BL[p-8] == 0 and BL[p-9] != id(wp) and BL[p-7] != id(wp):
+            evalu -= 5 - p/8
+
+    if colour == BLACK:
+        evalu *= -1
+
     if colour == WHITE:
         king, oppKing = wk.piecelist[0], bk.piecelist[0]
     else:
@@ -328,6 +333,7 @@ def EvaluateEndgame(colour):
         evalu += 0.5
 
     return evalu
+
 
 def pOn(s, p): return pm.boardlist[s] == id(p)
 def queensGambit():
