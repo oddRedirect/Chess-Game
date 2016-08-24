@@ -78,6 +78,7 @@ def loadAndTransform(image, size):
     return pygame.transform.smoothscale(loadedImage, (size, size))
 
 
+# Adds dead pieces to their respective lists
 def checkForDead(start, end):
     piece = pm.pieceatsqr(end)
     if piece:
@@ -88,21 +89,22 @@ def checkForDead(start, end):
     elif abs(start-end) == 7 or abs(start-end) == 9:
         if pm.pieceatsqr(start) == pm.wp:
             mainState.deadBlack.append(pm.bp)
-        if pm.pieceatsqr(start) == pm.bp:
+        elif pm.pieceatsqr(start) == pm.bp:
             mainState.deadWhite.append(pm.wp)
 
 
+# Brings back dead pieces that should not be dead
 def reviveDead():
      for deadList in mainState.deadWhite, mainState.deadBlack:
         x = len(deadList)
         if x > 0:
-            p = deadList[x-1]
+            p = deadList[x-1] # Most recently added piece
             c, d =  deadList.count(p), len(p.piecelist)
             if p.name == pm.PAWN and c+d != 8:
                 deadList.pop()
-            elif p.name == pm.BISHOP or p.name == pm.ROOK or p.name == pm.KNIGHT:
-                if c+d != 2:
-                    deadList.pop()
+            elif (p.name == pm.BISHOP or p.name == pm.ROOK
+                  or p.name == pm.KNIGHT) and c+d != 2:
+                deadList.pop()
             elif p.name == pm.QUEEN and c+d != 1:
                 deadList.pop()
 
@@ -110,15 +112,13 @@ def reviveDead():
 # Draws the board to the screen
 def drawBoard():
     x, y = xcorner, ycorner
-    size = boardsize
-    k = squaresize
+    k, size = squaresize, boardsize
     pygame.draw.rect(screen, boardcolour, (x, y, size, size), 3)
     for sqr in range(64):
         f, r = fileAndRank(sqr)
         sx = x + f*k + 2 # Add 2 to centre the board
         sy = y + r*k + 2
-        a, b = sqr/8, sqr%2
-        if a%2 == b:
+        if (sqr/8)%2 == sqr%2:
             pygame.draw.rect(screen, brown, (sx, sy, k, k))
         else:
             pygame.draw.rect(screen, lightblue, (sx, sy, k, k))        
@@ -131,21 +131,17 @@ def drawPieces():
         pieceImage = loadAndTransform(p.picture, k)
         for sqr in p.piecelist:
             f, r = fileAndRank(sqr)
-            x = xcorner + f*k
-            y = ycorner + r*k 
-            screen.blit(pieceImage, (x, y))
+            screen.blit(pieceImage, (xcorner + f*k, ycorner + r*k))
     pygame.display.update()
 
 
 # Draws the buttons below the board
-def buttonHelper(xcoord, text):
-    x, y = xcoord, buttony
-    pygame.draw.rect(screen, boardcolour, (x, y, buttonWidth, buttonHeight), 2)
-    message = ButtonFont.render(text, 1, blue)
-    messagex = xcoord + 75//2 - ((len(text) * 75//11) / 2)
-    screen.blit(message, (messagex , y+3))
-
 def drawButtons():
+    def buttonHelper(xcoord, text):
+        x, y = xcoord, buttony
+        pygame.draw.rect(screen, boardcolour, (x, y, buttonWidth, buttonHeight), 2)
+        messagex = x + 75//2 - ((len(text) * 75//11) / 2) # Magic to centre text
+        screen.blit(ButtonFont.render(text, 1, blue), (messagex , y+3))
     buttonHelper(buttonx, "NEW GAME")
     buttonHelper(undox, "UNDO ")
     buttonHelper(flipx, "FLIP")
@@ -179,14 +175,13 @@ def drawDead():
 def squareClicked(mousex, mousey):
     x = mousex - xcorner
     y = mousey - ycorner
-    size = boardsize
-    k = squaresize
+    k, size = squaresize, boardsize
     if x>0 and x<size and y>0 and y<size:
         fil = x // k
         rank = y // k
         sqr = 8*(7-rank) + fil
         if mainState.FLIP:
-            sqr = 63 - (8*(7-rank) + fil)
+            sqr = 63 - sqr
         return sqr
     return -1
 
@@ -195,12 +190,10 @@ def squareClicked(mousex, mousey):
 def drawMoves(sqr):
     for s in pm.PieceMovement(sqr):
         f, r = fileAndRank(s)
-        size = boardsize
-        k = squaresize
+        k, size = squaresize, boardsize
         x = (xcorner + k*f + k/2) // 1
         y = (ycorner + k*r + k/2) // 1
-        rad = k//4
-        pygame.draw.circle(screen, green, (x, y), rad, 0)
+        pygame.draw.circle(screen, green, (x, y), k//4, 0)
         pygame.display.update()
 
 
@@ -209,8 +202,7 @@ def drawStuff(sqr=-1):
     screen.fill(backcolour)
     drawButtons()
     drawBoard()
-    if sqr != -1:
-        drawHighlight(sqr)
+    if sqr != -1: drawHighlight(sqr)
     drawDead()
     drawPieces()
 
@@ -226,6 +218,7 @@ class GameState:
 
 mainState = GameState()
 
+#TODO: Place this function in the GameState class
 def resetState():
     global mainState
     mainState = GameState()
@@ -263,8 +256,8 @@ def DoCompTurn(turn):
     if mainState.movenumber <= 5:
         start, end = ChessEngine.OpeningMoves(turn, mainState.movenumber, mainState.randmove)
     else:
-        k = ChessEngine.FindBest(turn)
-        start, end = k.movestart, k.moveend
+        mv = ChessEngine.FindBest(turn)
+        start, end = mv.movestart, mv.moveend
     checkForDead(start, end)
     pm.MovePiece(start, end)
     drawStuff(end)
@@ -309,7 +302,7 @@ def DoPlayerTurn(turn):
 
                                              
 def main():
-    # Variables and such
+    # Initialize things
     pygame.display.set_caption('Can you beat Shallow Blue in chess?')
     pm.updateCastlingRights()
     drawStuff()
