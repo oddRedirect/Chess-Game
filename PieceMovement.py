@@ -6,11 +6,11 @@ WHITE, BLACK = 'w', 'b'
 PAWN, BISHOP, KNIGHT, ROOK, QUEEN, KING = 'p', 'b', 'n', 'r', 'q', 'k'
 
 class Piece:
-    piecelist = []
-    colour = ""
-    name = ""
-    picture = ""
-    value = 0
+    def __init__(self, p, name):
+        self.picture = p
+        self.name = name
+        self.piecelist = []
+        self.value = 0
 
 
 class boardState:
@@ -24,58 +24,26 @@ class boardState:
 curState = boardState()
 
 # White pieces:
-wk = Piece()
-wk.picture = "Pieces/WhiteKing.png"
-
-wq = Piece()
-wq.picture = "Pieces/WhiteQueen.png"
-
-wb = Piece()
-wb.picture = "Pieces/WhiteBishop.png"
-
-wn = Piece()
-wn.picture = "Pieces/WhiteKnight.png"
-
-wr = Piece()
-wr.picture = "Pieces/WhiteRook.png"
-
-wp = Piece()
-wp.picture = "Pieces/WhitePawn.png"
+wk = Piece("Pieces/WhiteKing.png", KING)
+wq = Piece("Pieces/WhiteQueen.png", QUEEN)
+wb = Piece("Pieces/WhiteBishop.png", BISHOP)
+wn = Piece("Pieces/WhiteKnight.png", KNIGHT)
+wr = Piece("Pieces/WhiteRook.png", ROOK)
+wp = Piece("Pieces/WhitePawn.png", PAWN)
 
 whitepieces = [wk, wq, wb, wn, wr, wp]
-for y in whitepieces:
-    y.colour = WHITE
+for y in whitepieces: y.colour = WHITE
 
 # Black pieces:
-bk = Piece()
-bk.picture = "Pieces/BlackKing.png"
-
-bq = Piece()
-bq.picture = "Pieces/BlackQueen.png"
-
-bb = Piece()
-bb.picture = "Pieces/BlackBishop.png"
-
-bn = Piece()
-bn.picture = "Pieces/BlackKnight.png"
-
-br = Piece()
-br.picture = "Pieces/BlackRook.png"
-
-bp = Piece()
-bp.picture = "Pieces/BlackPawn.png"
+bk = Piece("Pieces/BlackKing.png", KING)
+bq = Piece("Pieces/BlackQueen.png", QUEEN)
+bb = Piece("Pieces/BlackBishop.png", BISHOP)
+bn = Piece("Pieces/BlackKnight.png", KNIGHT)
+br = Piece("Pieces/BlackRook.png", ROOK)
+bp = Piece("Pieces/BlackPawn.png", PAWN)
 
 blackpieces = [bk, bq, bb, bn, br, bp]
-for y in blackpieces:
-    y.colour = BLACK
-
-for lst in whitepieces, blackpieces:
-    lst[0].name = KING
-    lst[1].name = QUEEN
-    lst[2].name = BISHOP
-    lst[3].name = KNIGHT
-    lst[4].name = ROOK
-    lst[5].name = PAWN
+for y in blackpieces: y.colour = BLACK
 
 # Misc.
 allpieces = whitepieces + blackpieces
