@@ -52,8 +52,7 @@ boardlist = range(70) # Just to be safe
 
 # Clears the board of all pieces
 def emptyboard():
-    for i in range(64):
-        boardlist[i] = 0
+    for i in range(64): boardlist[i] = 0
 
 
 # Adds the positions of all pieces on the board to their respective objects
@@ -61,8 +60,7 @@ def updatepieces():
     for y in allpieces:
         y.piecelist = []
     for num, piece in enumerate(boardlist):
-        if not(piece):
-            continue
+        if not(piece): continue
         for y in allpieces:
             if id(y) == piece:
                 y.piecelist.append(num)
@@ -77,15 +75,13 @@ def resetboard():
     boardlist[2], boardlist[5] = id(wb), id(wb)
     boardlist[1], boardlist[6] = id(wn), id(wn)
     boardlist[0], boardlist[7] = id(wr), id(wr)
-    for i in range(8, 16):
-        boardlist[i] = id(wp)
+    for i in range(8, 16): boardlist[i] = id(wp)
     boardlist[60] = id(bk)
     boardlist[59] = id(bq)
     boardlist[61], boardlist[58] = id(bb), id(bb)
     boardlist[62], boardlist[57] = id(bn), id(bn)
     boardlist[63], boardlist[56] = id(br), id(br)
-    for i in range(48, 56):
-        boardlist[i] = id(bp)
+    for i in range(48, 56): boardlist[i] = id(bp)
     updatepieces()
 
 resetboard()
@@ -272,8 +268,7 @@ def bishopMovement(i):
     return p
 
 #helper
-def kingMovement(i):
-    sqr = numtocoord(i)
+def kingMovement(sqr, i):
     m, n = sqr[0], sqr[1]
     p = []
     if m != 'a':
@@ -295,8 +290,7 @@ def kingMovement(i):
     return p
 
 #helper
-def knightMovement(i):
-    sqr = numtocoord(i)
+def knightMovement(sqr, i):
     m, n = sqr[0], sqr[1]
     p = []
     if m != 'a' and m != 'b':
@@ -330,7 +324,7 @@ def PieceMovement(i):
 
     # King Movement
     if j.name == KING:
-        p = kingMovement(i)
+        p = kingMovement(sqr, i)
         # Castling
         if (j.colour == WHITE and curState.ws) or (j.colour == BLACK and curState.bs):
             a, b = pieceatsqr(i + 1), pieceatsqr(i + 2)
@@ -341,7 +335,7 @@ def PieceMovement(i):
         if (j.colour == WHITE and curState.wl) or (j.colour == BLACK and curState.bl):
             a, b, c = pieceatsqr(i - 1), pieceatsqr(i - 2), pieceatsqr(i - 3)
             if not(a) and not(b) and not(c):
-                if isSafe(i-1, j.colour) and isSafe(i-2, j.colour) and isSafe(i-3, j.colour):
+                if isSafe(i-1, j.colour) and isSafe(i-2, j.colour):
                     p.append(i - 2)    
 
     # Pawn Movement
@@ -373,7 +367,7 @@ def PieceMovement(i):
         
     # Knight Movement
     elif j.name == KNIGHT:
-        p = knightMovement(i)
+        p = knightMovement(sqr, i)
 
     # Rook Movement
     elif j.name == ROOK:
@@ -423,7 +417,7 @@ def KnightDanger(sqr, colour):
         knight = id(bn)
     else:
         knight = id(wn)
-    for y in knightMovement(sqr):
+    for y in knightMovement(numtocoord(sqr), sqr):
         if boardlist[y] == knight:
             return True
 
@@ -432,7 +426,7 @@ def KingDanger(sqr, colour):
         king = id(bk)
     else:
         king = id(wk)
-    for y in kingMovement(sqr):
+    for y in kingMovement(numtocoord(sqr), sqr):
         if boardlist[y] == king:
             return True
 

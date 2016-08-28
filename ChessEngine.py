@@ -1,12 +1,12 @@
 import sys
 import PieceMovement as pm
 from PieceMovement import PieceMovement, isSafe, isInCheck
-from PieceMovement import wk, wq, wb, wn, wr, wp
-from PieceMovement import bk, bq, bb, bn, br, bp
+from PieceMovement import wk, wq, wb, wn, wr, wp, bk, bq, bb, bn, br, bp
 from PieceMovement import WHITE, BLACK
 from PieceMovement import PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING
 from functools import partial
 import cProfile
+import time
 
 # Global Constants:
 Pval = 1
@@ -18,7 +18,8 @@ Kval = 100
 
 mateThreshold = Kval - 2*Qval - 2*Pval
 maxPlies = 4
-NOISY_LOGGING = False
+NOISY_LOGGING = True
+current_time_millis = lambda: int(round(time.time() * 1000))
 
 # Assign a value to each piece
 for y in pm.allpieces:
@@ -166,12 +167,6 @@ def EvaluateMiddleGame(colour):
     elif not(pm.curState.bl or pm.curState.bs):
         evalu += 0.3
 
-    # Keep the f2/f7 square safe
-    if not(isSafe(53, BLACK)) and isSafe(53, WHITE, 'P', 'K'):
-        evalu += 0.5
-    if not(isSafe(13, WHITE)) and isSafe(13, BLACK, 'P', 'K'):
-        evalu -= 0.5
-
     if colour == BLACK:
         evalu *= -1
         
@@ -186,8 +181,8 @@ class Position:
 
 # Returns the "best" move for colour
 def FindBest(colour, plies=maxPlies, width=5):
-    if width <= 0:
-        width = 1
+    time0 = current_time_millis()
+    if width <= 0: width = 1
     
     if colour == WHITE:
         pieces = pm.whitepieces
@@ -239,24 +234,20 @@ def FindBest(colour, plies=maxPlies, width=5):
         plies -= 1
         width -= 2
         for pos in topMoves:
-            if pos.evaluation == 0:
-                continue
-            temp = pos.evaluation
+            if pos.evaluation == 0: continue
             pm.MovePiece(pos.movestart, pos.moveend)
             oppTop = FindBest(opp, plies, width)
             pos.evaluation = (-1) * oppTop.evaluation
             if NOISY_LOGGING and plies == maxPlies - 1:
-                print colour
-                print oppTop.moveend, "(", pos.evaluation, ")"
-                print pos.movestart, "->", pos.moveend
-                print temp, ";", pos.evaluation
+                print "Scared of:", oppTop.moveend
+                print pos.movestart, "->", pos.moveend, "(", pos.evaluation, ")"
             pm.UndoMove()
 
     if NOISY_LOGGING and plies == maxPlies - 1:
+        print "Time:", current_time_millis() - time0
         print "---------"
 
-    if len(topMoves) == 0:
-        topMoves.append(default)
+    if len(topMoves) == 0: topMoves.append(default)
     return max(topMoves, key=e)  
 
 
