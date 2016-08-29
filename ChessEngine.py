@@ -17,7 +17,7 @@ Qval = 9
 Kval = 100
 
 mateThreshold = Kval - 2*Qval - 2*Pval
-maxPlies = 4
+maxPlies, maxWidth = 4, 5
 NOISY_LOGGING = True
 current_time_millis = lambda: int(round(time.time() * 1000))
 
@@ -180,7 +180,7 @@ class Position:
     
 
 # Returns the "best" move for colour
-def FindBest(colour, plies=maxPlies, width=5):
+def FindBest(colour, plies=maxPlies, width=maxWidth):
     time0 = current_time_millis()
     if width <= 0: width = 1
     
@@ -193,7 +193,6 @@ def FindBest(colour, plies=maxPlies, width=5):
 
     topMoves = []
     default = Position()
-    default.evaluation = -1000
 
     def e(pos): return pos.evaluation
 
@@ -243,12 +242,17 @@ def FindBest(colour, plies=maxPlies, width=5):
                 print pos.movestart, "->", pos.moveend, "(", pos.evaluation, ")"
             pm.UndoMove()
 
-    if NOISY_LOGGING and plies == maxPlies - 1:
-        print "Time:", current_time_millis() - time0
-        print "---------"
-
     if len(topMoves) == 0: topMoves.append(default)
-    return max(topMoves, key=e)  
+    best = max(topMoves, key=e)
+
+    if plies == maxPlies -1:
+        if NOISY_LOGGING:
+            print "Time:", current_time_millis() - time0
+            print "---------"
+        if best.evaluation <= -(mateThreshold) and width <= maxWidth:
+            return FindBest(colour, maxPlies, maxWidth*2)
+
+    return best
 
 
 # returns True if kingpos has the opposition against the enemy king
