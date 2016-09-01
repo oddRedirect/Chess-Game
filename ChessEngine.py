@@ -177,6 +177,7 @@ class Position:
     evaluation = 0
     movestart = 0
     moveend = 0
+    mateIn = 0
     
 
 # Returns the "best" move for colour
@@ -226,6 +227,7 @@ def FindBest(colour, plies=maxPlies, width=maxWidth):
 
                 # Return right away if a mate is found
                 if cur.evaluation >= mateThreshold:
+                    cur.mateIn = 1
                     return cur
 
     #TODO: Use a helper function or a loop instead
@@ -236,10 +238,15 @@ def FindBest(colour, plies=maxPlies, width=maxWidth):
             if pos.evaluation == 0: continue
             pm.MovePiece(pos.movestart, pos.moveend)
             oppTop = FindBest(opp, plies, width)
+            if oppTop.mateIn:
+                pos.mateIn = oppTop.mateIn + 1
             pos.evaluation = (-1) * oppTop.evaluation
             if NOISY_LOGGING and plies == maxPlies - 1:
-                print "Scared of:", oppTop.moveend
-                print pos.movestart, "->", pos.moveend, "(", pos.evaluation, ")"
+                if pos.mateIn:
+                    printval = "Mate in " + str(pos.mateIn // 2)
+                else:
+                    printval = pos.evaluation
+                print pos.movestart, "->", pos.moveend, "(", printval, ")"
             pm.UndoMove()
 
     if len(topMoves) == 0: topMoves.append(default)
