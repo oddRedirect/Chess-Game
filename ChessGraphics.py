@@ -18,11 +18,8 @@ marginsize = 30
 screenwidth = 1024 # 640 for a smaller screen
 screenheight = 640 # 480 for a smaller screen
 
-if screenwidth >= screenheight:
-    dx, dy = (screenwidth - screenheight)/2, 0
-else:
-    dx, dy = 0, (screenheight - screenwidth)/2
-xcorner, ycorner = dx + marginsize, dy + marginsize
+xcorner = max(0, screenwidth - screenheight) / 2 + marginsize
+ycorner = max(0, screenheight - screenwidth) / 2 + marginsize
 boardsize = min(screenheight, screenwidth) - 2 * marginsize
 squaresize = boardsize / 8
 
@@ -69,7 +66,7 @@ def displayMessage(message, xcoord):
     message = MessageFont.render(message, 1, blue)
     screen.blit(message, (xcoord, marginsize /2))
     pygame.display.update()
-    mainState.turn = 'end'
+    mainState.END = True
 
 
 # Load an image and set it to the specified size
@@ -209,33 +206,31 @@ def drawStuff(sqr=-1):
 
 # A class used for resetting the game
 class GameState:
-    movenumber = 0
-    turn = WHITE
-    randmove = random.random()
-    deadBlack = []
-    deadWhite = []
-    FLIP = False
+    def __init__(self):
+        self.movenumber = 0
+        self.turn = WHITE
+        self.randmove = random.random()
+        self.deadBlack = []
+        self.deadWhite = []
+        self.FLIP = False
+        self.END = False
 
 mainState = GameState()
 
-#TODO: Place this function in the GameState class
 def resetState():
     global mainState
     mainState = GameState()
-    mainState.randmove = random.random()
-    mainState.deadBlack = []
-    mainState.deadWhite = []
     pm.resetgame()
     drawStuff()
 
 
 # Undoes a move !!
 def UndoStuff():
-    if mainState.turn != 'end':
-        pm.UndoMove()
-        pm.UndoMove()
-        reviveDead()
-        drawStuff()
+    if mainState.END: mainState.END = False
+    pm.UndoMove()
+    pm.UndoMove()
+    reviveDead()
+    drawStuff()
     if mainState.movenumber == 1:
         mainState.turn = WHITE
     if mainState.movenumber != 0:
@@ -253,6 +248,7 @@ def switchTurn(turn):
 
 # Makes a move for the computer
 def DoCompTurn(turn):
+    if mainState.END: return
     if mainState.movenumber <= 5:
         start, end = ChessEngine.OpeningMoves(turn, mainState.movenumber, mainState.randmove)
     else:
@@ -312,7 +308,7 @@ def main():
         for event in pygame.event.get():
             checkType(event)
         # Checks for mate
-        if mainState.turn != 'end':
+        if not mainState.END:
             mate_status = pm.isMated(mainState.turn)
         if mate_status:
             displayMessage(mate_status + "!", screenwidth / 2 - marginsize)
