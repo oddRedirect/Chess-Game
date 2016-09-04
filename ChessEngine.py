@@ -38,7 +38,7 @@ for y in pm.allpieces:
 # Gives a numerical value for how good colour's position is
 def EvaluatePosition(colour):
     evalu = 0.01
-    whiteMate, blackMate = pm.isMated(WHITE), pm.isMated(BLACK)
+    whiteMate, blackMate = pm.isMated(WHITE, 20), pm.isMated(BLACK, 20)
     BL = pm.boardlist
 
     # Check for draw
@@ -360,11 +360,11 @@ openingDict = {(WHITE, 0): FirstMoves, (BLACK, 1): SecondMoves, (BLACK, 2): Thir
 # Finds possible opening moves for black
 def OpeningMoves(colour, movenum, randnum):
     if movenum >= 3 and colour == BLACK:
-        if pm.boardlist[27] == id(wn) and pm.boardlist[62] == id(bn):
+        if pm.boardlist[27] == id(wn) and PieceMovement(62).count(45):
             if pm.boardlist[34] != id(bp) and pm.boardlist[36] != id(bp):
                 return 62, 45
         if pm.boardlist[27] == id(wp) and pm.boardlist[26] == id(wp):
-            if pm.boardlist[62] == id(bn):
+            if PieceMovement(62).count(45): # Nf6
                 return 62, 45
     if (colour, movenum) in openingDict:
         moves = openingDict[(colour, movenum)]

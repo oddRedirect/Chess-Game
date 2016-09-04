@@ -20,6 +20,7 @@ class boardState:
     # Castling
     ws, wl, bs, bl = True, True, True, True
     lastCapture, lastPawnMove = 0, 0
+    numPieces = 32
 
 curState = boardState()
 
@@ -157,7 +158,9 @@ def MovePiece(start, end, update=True):
     # Updates fields needed for 50-move-rule
     curState.lastCapture += 1
     curState.lastPawnMove += 1
-    if m: curState.lastCapture = 0
+    if m:
+        curState.lastCapture = 0
+        curState.numPieces -= 1
 
     curState.enPassant = None
     # Checks if En Passant is valid
@@ -322,6 +325,8 @@ def PieceMovement(i):
     m, n = sqr[0], sqr[1]
     p = []
 
+    if not j: return p
+
     # King Movement
     if j.name == KING:
         p = kingMovement(sqr, i)
@@ -478,7 +483,11 @@ def isInCheckMod(colour):
 
 
 # determines whether colour is in checkmate, stalemate or neither
-def isMated(colour):
+def isMated(colour, threshold=32):
+    inCheck = isInCheck(colour)
+    if not(inCheck) and curState.numPieces > threshold:
+        return False
+
     if colour == WHITE:
         pieces = whitepieces
     elif colour == BLACK:
@@ -487,7 +496,7 @@ def isMated(colour):
         for i in y.piecelist:
             if len(PieceMovement(i)) > 0:
                 return False
-    if isInCheck(colour):
+    if inCheck:
         return 'CHECKMATE'
     return 'STALEMATE'
 
