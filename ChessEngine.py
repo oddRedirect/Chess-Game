@@ -17,7 +17,7 @@ Qval = 9
 Kval = 100
 
 mateThreshold = Kval - 2*Qval - 2*Pval
-maxPlies, maxWidth = 4, 5
+maxDepth, maxWidth = 3, 6   # 3 seems to work better than 4 for maxDepth
 NOISY_LOGGING = True
 current_time_millis = lambda: int(round(time.time() * 1000))
 
@@ -181,7 +181,7 @@ class Position:
     
 
 # Returns the "best" move for colour
-def FindBest(colour, plies=maxPlies, width=maxWidth):
+def FindBest(colour, depth=maxDepth, width=maxWidth):
     time0 = current_time_millis()
     if width <= 0: width = 1
     
@@ -231,17 +231,17 @@ def FindBest(colour, plies=maxPlies, width=maxWidth):
                     return cur
 
     #TODO: Use a helper function or a loop instead
-    if plies > 1:
-        plies -= 1
-        width -= 2
+    if depth > 1:
+        depth -= 1
+        width -= 1 # Width is important
         for pos in topMoves:
             if pos.evaluation == 0: continue
             pm.MovePiece(pos.movestart, pos.moveend)
-            oppTop = FindBest(opp, plies, width)
+            oppTop = FindBest(opp, depth, width)
             if oppTop.mateIn:
                 pos.mateIn = oppTop.mateIn + 1
             pos.evaluation = (-1) * oppTop.evaluation
-            if NOISY_LOGGING and plies == maxPlies - 1:
+            if NOISY_LOGGING and depth == maxDepth - 1:
                 if pos.mateIn:
                     printval = "Mate in " + str(pos.mateIn // 2)
                 else:
@@ -252,12 +252,12 @@ def FindBest(colour, plies=maxPlies, width=maxWidth):
     if len(topMoves) == 0: topMoves.append(default)
     best = max(topMoves, key=e)
 
-    if plies == maxPlies -1:
+    if depth == maxDepth -1:
         if NOISY_LOGGING:
             print "Time:", current_time_millis() - time0
             print "---------"
         if best.evaluation <= -(mateThreshold) and width <= maxWidth:
-            return FindBest(colour, maxPlies, maxWidth*2)
+            return FindBest(colour, maxDepth, maxWidth*2)
 
     return best
 
