@@ -312,6 +312,7 @@ def main():
             mate_status = pm.isMated(mainState.turn)
         if mate_status:
             displayMessage(mate_status + "!", screenwidth / 2 - marginsize)
+            continue
         # Checks for draw
         draw_status = pm.isDraw() 
         if draw_status:
