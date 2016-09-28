@@ -38,15 +38,10 @@ for y in pm.allpieces:
 # Gives a numerical value for how good colour's position is
 def EvaluatePosition(colour):
     evalu = 0.01
-    whiteMate, blackMate = pm.isMated(WHITE, 20), pm.isMated(BLACK, 20)
     BL = pm.boardlist
 
     # Check for draw
     if pm.isDraw():
-        return 0
-    if colour == BLACK and whiteMate and whiteMate[0] == 'S':
-        return 0
-    if colour == WHITE and blackMate and blackMate[0] == 'S':
         return 0
 
     # Calculate material imbalances
@@ -64,18 +59,15 @@ def EvaluatePosition(colour):
             if not(isSafe(p, BLACK, 'K')):
                 evalu += y.value/2 - 0.3
 
-    # Checkmate is the ultimate goal
-    if isInCheck(WHITE):
-        evalu -= 0.5
-        if whiteMate and whiteMate[0] == 'C':
-            evalu -= Kval
-    if isInCheck(BLACK):
-        evalu += 0.5
-        if blackMate and blackMate[0] == 'C':
-            evalu += Kval
-
     if colour == BLACK:
         evalu *= -1
+        opp = WHITE
+    else:
+        opp = BLACK
+
+    if isInCheck(opp):
+        if pm.isMated(opp):
+            return Kval
 
     if isEndgame():
         evalu += EvaluateEndgame(colour)
@@ -193,8 +185,6 @@ def FindBest(colour, depth=maxDepth, width=maxWidth):
         opp = WHITE
 
     topMoves = []
-    default = Position()
-
     def e(pos): return pos.evaluation
 
     def checkSafety(i, end):
@@ -230,7 +220,6 @@ def FindBest(colour, depth=maxDepth, width=maxWidth):
                     cur.mateIn = 1
                     return cur
 
-    #TODO: Use a helper function or a loop instead
     if depth > 1:
         depth -= 1
         width -= 1 # Width is important
@@ -238,9 +227,16 @@ def FindBest(colour, depth=maxDepth, width=maxWidth):
             if pos.evaluation == 0: continue
             pm.MovePiece(pos.movestart, pos.moveend)
             oppTop = FindBest(opp, depth, width)
-            if oppTop.mateIn:
-                pos.mateIn = oppTop.mateIn + 1
-            pos.evaluation = (-1) * oppTop.evaluation
+
+            if oppTop == 'C':
+                pos.mateIn = 1
+                pos.evaluation = Kval
+            elif oppTop == 'S':
+                pos.evaluation = 0
+            else:
+                if oppTop.mateIn: pos.mateIn = oppTop.mateIn + 1
+                pos.evaluation = (-1) * oppTop.evaluation
+                
             if NOISY_LOGGING and depth == maxDepth - 1:
                 if pos.mateIn:
                     printval = "Mate in " + str(pos.mateIn // 2)
@@ -249,7 +245,11 @@ def FindBest(colour, depth=maxDepth, width=maxWidth):
                 print pos.movestart, "->", pos.moveend, "(", printval, ")"
             pm.UndoMove()
 
-    if len(topMoves) == 0: topMoves.append(default)
+    if len(topMoves) == 0:
+        if isInCheck(colour):
+            return 'C'
+        else:
+            return 'S'
     best = max(topMoves, key=e)
 
     if depth == maxDepth -1:
