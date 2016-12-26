@@ -31,7 +31,7 @@ undox, flipx = buttonx + 100, buttonx - 100
 pygame.init()
 screen = pygame.display.set_mode((screenwidth, screenheight))
 MessageFont = pygame.font.SysFont("comic sans", 18)
-ButtonFont = pygame.font.SysFont("comic sans", 15)
+ButtonFont = pygame.font.SysFont("comic sans", 18)
 
 
 # helper to obtain file and rank
@@ -136,7 +136,7 @@ def drawPieces():
 def drawButtons():
     def buttonHelper(xcoord, text):
         x, y = xcoord, buttony
-        pygame.draw.rect(screen, boardcolour, (x, y, buttonWidth, buttonHeight), 2)
+        #pygame.draw.rect(screen, boardcolour, (x, y, buttonWidth, buttonHeight), 2)
         messagex = x + 75//2 - ((len(text) * 75//11) / 2) # Magic to centre text
         screen.blit(ButtonFont.render(text, 1, blue), (messagex , y+3))
     buttonHelper(buttonx, "NEW GAME")
