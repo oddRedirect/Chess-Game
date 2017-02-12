@@ -48,24 +48,30 @@ for y in blackpieces: y.colour = BLACK
 
 # Misc.
 allpieces = whitepieces + blackpieces
-boardlist = range(70) # Just to be safe
+boardlist = [0] * 70 # Just to be safe
+pieceIds = {}
+
+# Set the piece Ids right away
+for i in allpieces: pieceIds[id(i)]=i
 
 
 # Clears the board of all pieces
 def emptyboard():
-    for i in range(64): boardlist[i] = 0
+    for i in xrange(64): boardlist[i] = 0
+
+# Looks up the piece in the pieceIds dictionary
+def getPiece(pId):
+    return pieceIds[pId]
 
 
 # Adds the positions of all pieces on the board to their respective objects
 def updatepieces():
     for y in allpieces:
         y.piecelist = []
-    for num, piece in enumerate(boardlist):
-        if not(piece): continue
-        for y in allpieces:
-            if id(y) == piece:
-                y.piecelist.append(num)
-                break
+    for num, pieceId in enumerate(boardlist):
+        if not(pieceId): continue
+        piece = getPiece(pieceId)
+        piece.piecelist.append(num)
 
 
 # Reverts the board to the starting position
@@ -76,7 +82,7 @@ def resetboard():
     boardlist[2], boardlist[5] = id(wb), id(wb)
     boardlist[1], boardlist[6] = id(wn), id(wn)
     boardlist[0], boardlist[7] = id(wr), id(wr)
-    for i in range(8, 16): boardlist[i] = id(wp)
+    for i in xrange(8, 16): boardlist[i] = id(wp)
     boardlist[60] = id(bk)
     boardlist[59] = id(bq)
     boardlist[61], boardlist[58] = id(bb), id(bb)
@@ -475,7 +481,7 @@ def isInCheckMod(colour):
         king = id(wk)
     elif colour == BLACK:
         king = id(bk)
-    for s in range(64):
+    for s in xrange(64):
         if boardlist[s] == king:
             kingsqr = s
             break

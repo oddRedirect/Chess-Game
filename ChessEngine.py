@@ -17,7 +17,8 @@ Qval = 9
 Kval = 100
 
 mateThreshold = Kval - 2*Qval - 2*Pval
-maxDepth, maxWidth = 3, 6   # 3 seems to work better than 4 for maxDepth
+maxPlies = Plies = 24  # Change these numbers to change difficulty
+maxWidth = 6           #
 NOISY_LOGGING = True
 current_time_millis = lambda: int(round(time.time() * 1000))
 
@@ -173,7 +174,9 @@ class Position:
     
 
 # Returns the "best" move for colour
-def FindBest(colour, depth=maxDepth, width=maxWidth):
+def FindBest(colour, width=maxWidth, first=True):
+    global Plies
+    if first: Plies = maxPlies
     time0 = current_time_millis()
     if width <= 0: width = 1
     
@@ -220,13 +223,13 @@ def FindBest(colour, depth=maxDepth, width=maxWidth):
                     cur.mateIn = 1
                     return cur
 
-    if depth > 1:
-        depth -= 1
-        width -= 1 # Width is important
+    if Plies > 1:
+
+        Plies -= len(topMoves)
         for pos in topMoves:
             if pos.evaluation == 0: continue
             pm.MovePiece(pos.movestart, pos.moveend)
-            oppTop = FindBest(opp, depth, width)
+            oppTop = FindBest(opp, width, False)
 
             if oppTop == 'C':
                 pos.mateIn = 1
@@ -237,7 +240,7 @@ def FindBest(colour, depth=maxDepth, width=maxWidth):
                 if oppTop.mateIn: pos.mateIn = oppTop.mateIn + 1
                 pos.evaluation = (-1) * oppTop.evaluation
                 
-            if NOISY_LOGGING and depth == maxDepth - 1:
+            if first:
                 if pos.mateIn:
                     printval = "Mate in " + str(pos.mateIn // 2)
                 else:
@@ -252,12 +255,12 @@ def FindBest(colour, depth=maxDepth, width=maxWidth):
             return 'S'
     best = max(topMoves, key=e)
 
-    if depth == maxDepth -1:
+    if first:
         if NOISY_LOGGING:
             print "Time:", current_time_millis() - time0
             print "---------"
         if best.evaluation <= -(mateThreshold) and width <= maxWidth:
-            return FindBest(colour, maxDepth, maxWidth*2)
+            return FindBest(colour, maxWidth*2, False)
 
     return best
 
@@ -376,7 +379,10 @@ def OpeningMoves(colour, movenum, randnum):
     default = FindBest(colour)
     return default.movestart, default.moveend
 
-#pm.MovePiece(12, 28)
-#pm.MovePiece(52, 36)
-#pm.MovePiece(3, 12)
-#cProfile.run('FindBest("b")')
+
+# Profiling to see what slows the engine down
+if __name__ == '__main__':
+    pm.MovePiece(12, 28)
+    pm.MovePiece(52, 36)
+    pm.MovePiece(3, 12)
+    cProfile.run('FindBest("b")')
