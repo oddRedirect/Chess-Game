@@ -3,7 +3,7 @@ import copy
 
 # Global Constants
 WHITE, BLACK = 'w', 'b'
-PAWN, BISHOP, KNIGHT, ROOK, QUEEN, KING = 'p', 'b', 'n', 'r', 'q', 'k'
+PAWN, BISHOP, KNIGHT, ROOK, QUEEN, KING = 'p', 'B', 'N', 'R', 'Q', 'K'
 
 class Piece:
     def __init__(self, p, name):

@@ -228,6 +228,9 @@ def FindBest(colour, width=maxWidth, first=True):
         Plies -= len(topMoves)
         for pos in topMoves:
             if pos.evaluation == 0: continue
+            i = pm.pieceatsqr(pos.movestart)
+            capture = False
+            if pm.pieceatsqr(pos.moveend): capture = True
             pm.MovePiece(pos.movestart, pos.moveend)
             oppTop = FindBest(opp, width, False)
 
@@ -245,7 +248,9 @@ def FindBest(colour, width=maxWidth, first=True):
                     printval = "Mate in " + str(pos.mateIn // 2)
                 else:
                     printval = pos.evaluation
-                print pos.movestart, "->", pos.moveend, "(", printval, ")"
+                pre = '' if i.name == 'p' else i.name
+                if capture: pre += 'x'
+                print pre + pm.numtocoord(pos.moveend), "(", printval, ")"
             pm.UndoMove()
 
     if len(topMoves) == 0:
