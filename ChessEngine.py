@@ -17,10 +17,12 @@ Qval = 9
 Kval = 100
 
 mateThreshold = Kval - 2*Qval - 2*Pval
-maxPlies = Plies = 24  # Change these numbers to change difficulty
-maxWidth = 6           #
+maxPlies = Plies = 100  # Change these numbers to change difficulty
+maxWidth = 10           #
 NOISY_LOGGING = True
 current_time_millis = lambda: int(round(time.time() * 1000))
+
+move_num = 0
 
 # Assign a value to each piece
 for y in pm.allpieces:
@@ -49,16 +51,16 @@ def EvaluatePosition(colour):
     for y in pm.whitepieces:
         evalu += y.value * len(y.piecelist)
         if y.name == PAWN: continue
-        for p in y.piecelist:
+        #for p in y.piecelist:
             # Make sure pieces are safe
-            if not(isSafe(p, WHITE, 'K')):
-                evalu -= y.value/2 - 0.3
+            #if not(isSafe(p, WHITE, 'K')):
+             #   evalu -= y.value/2 - 0.3
     for y in pm.blackpieces:
         evalu -= y.value * len(y.piecelist)
         if y.name == PAWN: continue
-        for p in y.piecelist:
-            if not(isSafe(p, BLACK, 'K')):
-                evalu += y.value/2 - 0.3
+        #for p in y.piecelist:
+            #if not(isSafe(p, BLACK, 'K')):
+             #   evalu += y.value/2 - 0.3
 
     if colour == BLACK:
         evalu *= -1
@@ -70,12 +72,43 @@ def EvaluatePosition(colour):
         if pm.isMated(opp):
             return Kval
 
-    if isEndgame():
+    if move_num <=10:
+        evalu += EvaluateOpening(colour)
+    elif isEndgame():
         evalu += EvaluateEndgame(colour)
     else:
         evalu += EvaluateMiddleGame(colour)
 
     return evalu
+
+
+def EvaluateOpening(colour):
+    evalu = 0
+    for y in wq.piecelist:
+        if y >= 24 and y <= 48:
+            evalu -= 0.5
+    for y in bq.piecelist:
+        if y >= 24 and y <= 48:
+            evalu += 0.5
+
+    hs = wk.piecelist[0]
+    ls = bk.piecelist[0]
+    # Add incentives for castling
+    if hs == 2 or hs == 6:
+        evalu += 0.07
+    # Discourage useless king marches
+    elif not(pm.curState.wl or pm.curState.ws):
+        evalu -= 0.03
+    if ls == 57 or ls == 62:
+        evalu -= 0.07
+    elif not(pm.curState.bl or pm.curState.bs):
+        evalu += 0.03
+
+    if colour == BLACK:
+        evalu *= -1
+        
+    return evalu
+
 
 
 def EvaluateMiddleGame(colour):
@@ -84,81 +117,68 @@ def EvaluateMiddleGame(colour):
     for y in wp.piecelist:
         # Add incentives for centred pawns
         if y == 27 or y == 28:
-            evalu += 0.4
+            evalu += 0.1#4
         # Add incentives for making use of outposts for knights
         if y > 24 and y < 48:
             f = y % 8
             if pm.boardlist[y+9] == id(wn) or pm.boardlist[y+7] == id(wn):
                 if f > 0 and f < 7:
-                    evalu += 0.35
+                    evalu += 0.035
         # Doubled pawns are BAD
         if y < 56 and pm.boardlist[y + 8] == id(wp):
-            evalu -= 0.5
+            evalu -= 0.05
 
     for y in bp.piecelist:
         if y == 35 or y == 36:
-            evalu -= 0.4
+            evalu -= 0.1#4
         if y > 24 and y < 48:
             f = y % 8
             if pm.boardlist[y-9] == id(bn) or pm.boardlist[y-7] == id(bn):
                 if f > 0 and f < 7:
-                    evalu -= 0.35
+                    evalu -= 0.035
         if y < 56 and pm.boardlist[y + 8] == id(bp):
-            evalu += 0.5
+            evalu += 0.05
 
     for y in wn.piecelist:
         # Add incentives for development
         if y == 18 or y == 21:
-            evalu += 0.3
+            evalu += 0.03
     for y in bn.piecelist:
         if y == 42 or y == 45:
-            evalu -= 0.3
+            evalu -= 0.03
 
     for y in wb.piecelist:
         # Fianchetto
         if y == 9 or y == 14:
-            evalu += 0.35
+            evalu += 0.035
     for y in bb.piecelist:
         if y == 49 or y == 54:
-            evalu -= 0.35
+            evalu -= 0.035
 
     for y in wr.piecelist:
         f, r = y%8, y/8
         # Centralize rooks
         if f == 3 or f == 4:
-            evalu += 0.25
+            evalu += 0.025
         # Rooks on open/semi-open files
         for x in [f+8, f+16, f+24, f+32, f+40, f+48]:
             if pm.boardlist[x] == id(wp):
-                evalu -= 0.5
+                evalu -= 0.05
                 break
         # Rook on seventh rank is good
         if r == 6:
-            evalu += 0.35
+            evalu += 0.035
     for y in br.piecelist:
         f, r = y%8, y/8
         if f == 3 or f == 4:
-            evalu -= 0.25
+            evalu -= 0.025
         for x in [f+8, f+16, f+24, f+32, f+40, f+48]:
             if pm.boardlist[x] == id(bp):
-                evalu += 0.5
+                evalu += 0.05
                 break
         # Rook on second rank is good
         if r == 1:
-            evalu -= 0.35
-
-    hs = wk.piecelist[0]
-    ls = bk.piecelist[0]
-    # Add incentives for castling
-    if hs == 2 or hs == 6:
-        evalu += 0.7
-    # Discourage useless king marches
-    elif not(pm.curState.wl or pm.curState.ws):
-        evalu -= 0.3
-    if ls == 57 or ls == 62:
-        evalu -= 0.7
-    elif not(pm.curState.bl or pm.curState.bs):
-        evalu += 0.3
+            evalu -= 0.035
 
     if colour == BLACK:
         evalu *= -1
@@ -208,7 +228,7 @@ def FindBest(colour, width=maxWidth, first=True):
 
                 pm.MovePiece(start, end)
                 cur.evaluation = EvaluatePosition(colour)
-                checkSafety(i, end)
+                #checkSafety(i, end)
                 pm.UndoMove()
 
                 if len(topMoves) < width:
@@ -392,6 +412,8 @@ def OpeningMoves(colour, movenum, randnum):
                 for x in m:
                     if x[0] < randnum and randnum < x[1]:
                         return m[x]
+    global move_num
+    move_num = movenum                        
     default = FindBest(colour)
     return default.movestart, default.moveend
 
