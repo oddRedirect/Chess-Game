@@ -187,6 +187,7 @@ def MovePiece(start, end, update=True):
 
     if update: updatepieces()
     updateCastlingRights()
+    return j # return piece on start square (mostly for coords)
 
 
 # Checks if each side can still castle

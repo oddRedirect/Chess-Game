@@ -276,6 +276,7 @@ def DoPlayerTurn(turn):
                     if temp != -1:
                         for s in pm.PieceMovement(temp):
                             if msqr == s:
+                                #print ChessEngine.toCoords(temp, msqr)
                                 checkForDead(temp, msqr)
                                 pm.MovePiece(temp, msqr)
                                 drawStuff()

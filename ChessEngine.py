@@ -228,10 +228,8 @@ def FindBest(colour, width=maxWidth, first=True):
         Plies -= len(topMoves)
         for pos in topMoves:
             if pos.evaluation == 0: continue
-            i = pm.pieceatsqr(pos.movestart)
-            capture = False
-            if pm.pieceatsqr(pos.moveend): capture = True
-            pm.MovePiece(pos.movestart, pos.moveend)
+            # Actually move the Piece
+            startPiece = pm.MovePiece(pos.movestart, pos.moveend)
             oppTop = FindBest(opp, width, False)
 
             if oppTop == 'C':
@@ -243,15 +241,16 @@ def FindBest(colour, width=maxWidth, first=True):
                 if oppTop.mateIn: pos.mateIn = oppTop.mateIn + 1
                 pos.evaluation = (-1) * oppTop.evaluation
                 
+            pm.UndoMove()
+
             if first:
+                capture = (True if pm.pieceatsqr(pos.moveend) else False)
                 if pos.mateIn:
                     printval = "Mate in " + str(pos.mateIn // 2)
                 else:
                     printval = pos.evaluation
-                pre = '' if i.name == 'p' else i.name
-                if capture: pre += 'x'
-                print pre + pm.numtocoord(pos.moveend), "(", printval, ")"
-            pm.UndoMove()
+                c = toCoords(pos.movestart,pos.moveend,startPiece.name,capture)
+                print c, "(", printval, ")"
 
     if len(topMoves) == 0:
         if isInCheck(colour):
@@ -343,6 +342,18 @@ def EvaluateEndgame(colour):
         evalu += 0.5
 
     return evalu
+    
+
+def toCoords(start,end,name=None,capture=None):
+    if not(name): name = pm.pieceatsqr(start).name
+    if not(capture): capture = pm.pieceatsqr(end)
+    if name == 'K':
+        if abs(start-end) == 2: return 'O-O'
+    elif abs(start-end) == 3: return 'O-O-O'
+    pre = ('' if name == 'p' else name)
+    if capture and name == 'p': pre += pm.numtocoord(start)[0]
+    if capture: pre += 'x'
+    return pre + pm.numtocoord(end)
 
 
 def pOn(s, p): return pm.boardlist[s] == id(p)
