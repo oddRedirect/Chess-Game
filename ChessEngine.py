@@ -17,7 +17,7 @@ Qval = 9
 Kval = 100
 
 mateThreshold = Kval - 2*Qval - 2*Pval
-maxPlies = Plies = 100  # Change these numbers to change difficulty
+maxPlies = Plies = 500  # Change these numbers to change difficulty
 maxWidth = 10           #
 NOISY_LOGGING = True
 current_time_millis = lambda: int(round(time.time() * 1000))
@@ -191,12 +191,11 @@ class Position:
     movestart = 0
     moveend = 0
     mateIn = 0
+    plies = 0
     
 
 # Returns the "best" move for colour
-def FindBest(colour, width=maxWidth, first=True):
-    global Plies
-    if first: Plies = maxPlies
+def FindBest(colour, plies=maxPlies, width=maxWidth, first=True):
     time0 = current_time_millis()
     if width <= 0: width = 1
     
@@ -241,36 +240,46 @@ def FindBest(colour, width=maxWidth, first=True):
                 # Return right away if a mate is found
                 if cur.evaluation >= mateThreshold:
                     cur.mateIn = 1
+                    cur.plies = 0
                     return cur
 
-    if Plies > 1:
+    # We assign plies equally among the list of moves
+    extra = plies % len(topMoves)
+    assignedPlies = plies / len(topMoves) + (extra>0)
+    internalPlies = 0
+    for pos in topMoves:
+        extra -= 1;
+        if extra == 0: assignedPlies -= 1
+        if assignedPlies <= 0: break
+        if pos.evaluation == 0: continue
 
-        Plies -= len(topMoves)
-        for pos in topMoves:
-            if pos.evaluation == 0: continue
-            # Actually move the Piece
-            startPiece = pm.MovePiece(pos.movestart, pos.moveend)
-            oppTop = FindBest(opp, width, False)
+        # Actually move the Piece
+        startPiece = pm.MovePiece(pos.movestart, pos.moveend)
+        oppTop = FindBest(opp, assignedPlies, width, False)
 
-            if oppTop == 'C':
-                pos.mateIn = 1
-                pos.evaluation = Kval
-            elif oppTop == 'S':
-                pos.evaluation = 0
+        if oppTop == 'C':
+            pos.mateIn = 1
+            pos.evaluation = Kval
+        elif oppTop == 'S':
+            pos.evaluation = 0
+        else:
+            if oppTop.mateIn: pos.mateIn = oppTop.mateIn + 1
+            pos.evaluation = (-1) * oppTop.evaluation
+            
+        pm.UndoMove()
+
+        if first:
+            capture = (True if pm.pieceatsqr(pos.moveend) else False)
+            if pos.mateIn:
+                printval = "Mate in " + str(pos.mateIn // 2)
             else:
-                if oppTop.mateIn: pos.mateIn = oppTop.mateIn + 1
-                pos.evaluation = (-1) * oppTop.evaluation
-                
-            pm.UndoMove()
+                printval = pos.evaluation
+            c = toCoords(pos.movestart,pos.moveend,startPiece.name,capture)
+            print c, "(", printval, ")"
 
-            if first:
-                capture = (True if pm.pieceatsqr(pos.moveend) else False)
-                if pos.mateIn:
-                    printval = "Mate in " + str(pos.mateIn // 2)
-                else:
-                    printval = pos.evaluation
-                c = toCoords(pos.movestart,pos.moveend,startPiece.name,capture)
-                print c, "(", printval, ")"
+        # TODO: Add any extra plies to the assigned plies
+        # assignedPlies += (assignedPlies - oppTop.plies) / len(topMoves)
+        internalPlies += oppTop.plies
 
     if len(topMoves) == 0:
         if isInCheck(colour):
@@ -284,8 +293,9 @@ def FindBest(colour, width=maxWidth, first=True):
             print "Time:", current_time_millis() - time0
             print "---------"
         if best.evaluation <= -(mateThreshold) and width <= maxWidth:
-            return FindBest(colour, maxWidth*2, False)
+            return FindBest(colour, maxPlies, maxWidth*2, False)
 
+    best.plies = internalPlies
     return best
 
 
