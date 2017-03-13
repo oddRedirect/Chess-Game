@@ -14,6 +14,7 @@ class Piece:
 
 
 class boardState:
+    changed = None
     prevBoard = None
     prevState = None
     enPassant = None
@@ -49,7 +50,7 @@ for y in blackpieces: y.colour = BLACK
 # Misc.
 allpieces = whitepieces + blackpieces
 boardlist = [0] * 70 # Just to be safe
-pieceIds = {}
+pieceIds = {0: None}
 
 # Set the piece Ids right away
 for i in allpieces: pieceIds[id(i)]=i
@@ -70,8 +71,15 @@ def updatepieces():
         y.piecelist = []
     for num, pieceId in enumerate(boardlist):
         if not(pieceId): continue
-        piece = getPiece(pieceId)
-        piece.piecelist.append(num)
+        getPiece(pieceId).piecelist.append(num)
+
+def updatepiecesfast(changed):
+    for i in changed:
+        p = getPiece(i)
+        toAdd = [] if changed[i][1]==-1 else [changed[i][1]]
+        if changed[i][0]!=-1: p.piecelist.remove(changed[i][0])
+        newpiecelist = p.piecelist + toAdd
+        p.piecelist = newpiecelist
 
 
 # Reverts the board to the starting position
@@ -88,7 +96,7 @@ def resetboard():
     boardlist[61], boardlist[58] = id(bb), id(bb)
     boardlist[62], boardlist[57] = id(bn), id(bn)
     boardlist[63], boardlist[56] = id(br), id(br)
-    for i in range(48, 56): boardlist[i] = id(bp)
+    for i in xrange(48, 56): boardlist[i] = id(bp)
     updatepieces()
 
 resetboard()
@@ -116,10 +124,7 @@ def pieceatsqr(num):
     if num > 63 or num < 0:
         return None
     s = boardlist[num]
-    for y in allpieces:
-        if id(y) == s:
-            return y
-    return None
+    return getPiece(s)
 
 
 # Changes the value of the piece on start to end
@@ -147,19 +152,24 @@ def MovePiece(start, end, update=True):
     curState.prevBoard = copy.copy(boardlist)
 
     ChangeVar(start, end)
+    toUpdate = {id(j):[start,end]}
 
     # Move the rook if the king castled
     if j.name == KING and (end - start) == 2:
         ChangeVar(end + 1, start + 1)
+        toUpdate[id(pieceatsqr(start+1))]=[end+1,start+1]
     elif j.name == KING and (start - end) == 2:
         ChangeVar(end - 2, start - 1)
+        toUpdate[id(pieceatsqr(start-1))]=[end-2,start-1]
 
     # Turn a promoted pawn into a queen
     if pawnPromoted(end):
         if j.colour == WHITE:
             boardlist[end] = id(wq)
+            toUpdate[id(wp)]=[start,-1];toUpdate[id(wq)]=[-1,end]
         if j.colour == BLACK:
             boardlist[end] = id(bq)
+            toUpdate[id(bp)]=[start,-1];toUpdate[id(bq)]=[-1,end]
 
     # Updates fields needed for 50-move-rule
     curState.lastCapture += 1
@@ -167,6 +177,7 @@ def MovePiece(start, end, update=True):
     if m:
         curState.lastCapture = 0
         curState.numPieces -= 1
+        toUpdate[id(m)]=[end,-1]
 
     curState.enPassant = None
     # Checks if En Passant is valid
@@ -182,10 +193,14 @@ def MovePiece(start, end, update=True):
             if not m:
                 if j.colour == WHITE:
                     boardlist[e-8] = 0
+                    toUpdate[id(bp)]=[e-8,-1]
                 elif j.colour == BLACK:
                     boardlist[e+8] = 0
+                    toUpdate[id(wp)]=[e+8,-1]
+    if update: 
+        updatepiecesfast(toUpdate)
+        curState.changed = copy.copy(toUpdate)
 
-    if update: updatepieces()
     updateCastlingRights()
     return j # return piece on start square (mostly for coords)
 
@@ -214,9 +229,11 @@ def UndoMove(update=True):
         return
     
     boardlist = curState.prevBoard
+    if update: 
+        x = curState.changed
+        for i in x: x[i] = [x[i][1],x[i][0]]
+        updatepiecesfast(x)
     curState = curState.prevState
-    
-    if update: updatepieces()
 
     
 #helper
@@ -560,4 +577,16 @@ def isDraw():
     if isDrawByFifty():
         return "DRAW BY 50 MOVE RULE"
     return False
+
+
+if __name__ == '__main__':
+    import time
+    time0 = int(round(time.time() * 1000))
+    noop = 1
+    for i in range(10000):
+        if noop: MovePiece(12, 28, True)
+        else: UndoMove()
+        noop = not(noop)
+    print int(round(time.time() * 1000)) - time0
+    print noop
     
