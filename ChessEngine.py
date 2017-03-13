@@ -244,10 +244,15 @@ def FindBest(colour, plies=maxPlies, width=maxWidth, first=True):
                     cur.plies = 0
                     return cur
 
+    if len(topMoves) == 0:
+        if isInCheck(colour):
+            return 'C'
+        else:
+            return 'S'
+
     # We assign plies equally among the list of moves
     extra = plies % len(topMoves)
     assignedPlies = plies / len(topMoves) + (extra>0)
-    internalPlies = 0
     for pos in topMoves:
         extra -= 1;
         if extra == 0: assignedPlies -= 1
@@ -282,13 +287,7 @@ def FindBest(colour, plies=maxPlies, width=maxWidth, first=True):
 
         # TODO: Add any extra plies to the assigned plies
         # assignedPlies += (assignedPlies - oppTop.plies) / len(topMoves)
-        internalPlies += oppTop.plies
 
-    if len(topMoves) == 0:
-        if isInCheck(colour):
-            return 'C'
-        else:
-            return 'S'
     best = max(topMoves, key=e)
 
     if first:
@@ -298,7 +297,6 @@ def FindBest(colour, plies=maxPlies, width=maxWidth, first=True):
         if best.evaluation <= -(mateThreshold) and width <= maxWidth:
             return FindBest(colour, maxPlies, maxWidth*2, False)
 
-    best.plies = internalPlies
     return best
 
 
