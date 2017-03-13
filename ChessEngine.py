@@ -192,6 +192,7 @@ class Position:
     moveend = 0
     mateIn = 0
     plies = 0
+    coords = ''
     
 
 # Returns the "best" move for colour
@@ -268,14 +269,16 @@ def FindBest(colour, plies=maxPlies, width=maxWidth, first=True):
             
         pm.UndoMove()
 
+        capture = (True if pm.pieceatsqr(pos.moveend) else False)
+        pos.coords = toCoords(pos.movestart,pos.moveend,startPiece.name,capture) +\
+            "," + oppTop.coords
+
         if first:
-            capture = (True if pm.pieceatsqr(pos.moveend) else False)
             if pos.mateIn:
                 printval = "Mate in " + str(pos.mateIn // 2)
             else:
                 printval = pos.evaluation
-            c = toCoords(pos.movestart,pos.moveend,startPiece.name,capture)
-            print c, "(", printval, ")"
+            print pos.coords, "(", printval, ")"
 
         # TODO: Add any extra plies to the assigned plies
         # assignedPlies += (assignedPlies - oppTop.plies) / len(topMoves)
