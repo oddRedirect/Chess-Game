@@ -209,7 +209,7 @@ class GameState:
     def __init__(self):
         self.movenumber = 0
         self.turn = WHITE
-        self.randmove = 0.55#random.random()
+        self.randmove = random.random()
         self.deadBlack = []
         self.deadWhite = []
         self.FLIP = False

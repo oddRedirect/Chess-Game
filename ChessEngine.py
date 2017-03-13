@@ -17,7 +17,7 @@ Qval = 9
 Kval = 100
 
 mateThreshold = Kval - 2*Qval - 2*Pval
-maxPlies = Plies = 500  # Change these numbers to change difficulty
+maxPlies = Plies = 1000  # Change these numbers to change difficulty
 maxWidth = 10           #
 NOISY_LOGGING = True
 current_time_millis = lambda: int(round(time.time() * 1000))
@@ -72,12 +72,12 @@ def EvaluatePosition(colour):
         if pm.isMated(opp):
             return Kval
 
-    if move_num <=10:
-        evalu += EvaluateOpening(colour)
-    elif isEndgame():
-        evalu += EvaluateEndgame(colour)
-    else:
-        evalu += EvaluateMiddleGame(colour)
+    #if move_num <=10:
+     #   evalu += EvaluateOpening(colour)
+    #elif isEndgame():
+     #   evalu += EvaluateEndgame(colour)
+    #else:
+     #   evalu += EvaluateMiddleGame(colour)
 
     return evalu
 
