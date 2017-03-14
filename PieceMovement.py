@@ -577,16 +577,3 @@ def isDraw():
     if isDrawByFifty():
         return "DRAW BY 50 MOVE RULE"
     return False
-
-
-if __name__ == '__main__':
-    import time
-    time0 = int(round(time.time() * 1000))
-    noop = 1
-    for i in range(10000):
-        if noop: MovePiece(12, 28, True)
-        else: UndoMove()
-        noop = not(noop)
-    print int(round(time.time() * 1000)) - time0
-    print noop
-    

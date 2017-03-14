@@ -1,9 +1,6 @@
 import sys
 import PieceMovement as pm
-from PieceMovement import PieceMovement, isSafe, isInCheck
-from PieceMovement import wk, wq, wb, wn, wr, wp, bk, bq, bb, bn, br, bp
-from PieceMovement import WHITE, BLACK
-from PieceMovement import PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING
+from PieceMovement import *
 from functools import partial
 import cProfile
 import time
@@ -25,7 +22,7 @@ current_time_millis = lambda: int(round(time.time() * 1000))
 move_num = 0
 
 # Assign a value to each piece
-for y in pm.allpieces:
+for y in allpieces:
     if y.name == PAWN:
         y.value = Pval
     elif y.name == KNIGHT:
@@ -44,23 +41,14 @@ def EvaluatePosition(colour):
     BL = pm.boardlist
 
     # Check for draw
-    if pm.isDraw():
+    if isDraw():
         return 0
 
     # Calculate material imbalances
-    for y in pm.whitepieces:
+    for y in whitepieces:
         evalu += y.value * len(y.piecelist)
-        if y.name == PAWN: continue
-        #for p in y.piecelist:
-            # Make sure pieces are safe
-            #if not(isSafe(p, WHITE, 'K')):
-             #   evalu -= y.value/2 - 0.3
-    for y in pm.blackpieces:
+    for y in blackpieces:
         evalu -= y.value * len(y.piecelist)
-        if y.name == PAWN: continue
-        #for p in y.piecelist:
-            #if not(isSafe(p, BLACK, 'K')):
-             #   evalu += y.value/2 - 0.3
 
     if colour == BLACK:
         evalu *= -1
@@ -69,27 +57,155 @@ def EvaluatePosition(colour):
         opp = BLACK
 
     if isInCheck(opp):
-        if pm.isMated(opp):
+        if isMated(opp):
             return Kval
 
-    #if move_num <=10:
-     #   evalu += EvaluateOpening(colour)
-    #elif isEndgame():
-     #   evalu += EvaluateEndgame(colour)
-    #else:
-     #   evalu += EvaluateMiddleGame(colour)
+    if move_num <=10:
+        evalu += EvaluateOpening(colour)
+    elif isEndgame():
+        evalu += EvaluateEndgame(colour)
+    else:
+        evalu += EvaluateMiddleGame(colour)
 
     return evalu
 
 
+class Position:
+    evaluation = 0
+    movestart = 0
+    moveend = 0
+    mateIn = 0
+    plies = 0
+    coords = ''
+    
+
+# Returns the "best" move for colour
+def FindBest(colour, plies=maxPlies, width=maxWidth, first=True):
+    time0 = current_time_millis()
+    if width <= 0: width = 1
+    
+    if colour == WHITE:
+        pieces = whitepieces
+        opp = BLACK
+    elif colour == BLACK:
+        pieces = blackpieces
+        opp = WHITE
+
+    topMoves = []
+    def e(pos): return pos.evaluation
+
+    for p in pieces:
+        for start in p.piecelist:
+            for end in PieceMovement(start):
+                cur = Position()
+                cur.movestart, cur.moveend = start, end
+
+                i = pieceatsqr(end) # Executes before piece is moved
+
+                MovePiece(start, end)
+                cur.evaluation = EvaluatePosition(colour)
+                UndoMove()
+
+                if len(topMoves) < width:
+                    topMoves.append(cur)
+                    topMoves.sort(key=e)
+                elif cur.evaluation > topMoves[0].evaluation:
+                    topMoves[0] = cur
+                    topMoves.sort(key=e)
+
+                # Return right away if a mate is found
+                if cur.evaluation >= mateThreshold:
+                    cur.mateIn = 1
+                    cur.plies = 0
+                    return cur
+
+    if len(topMoves) == 0:
+        if isInCheck(colour):
+            return 'C'
+        else:
+            return 'S'
+
+    # We assign plies equally among the list of moves
+    extra = plies % len(topMoves)
+    assignedPlies = plies / len(topMoves) + (extra>0)
+    for pos in topMoves:
+        extra -= 1;
+        if extra == 0: assignedPlies -= 1
+        if assignedPlies <= 0: break
+        if pos.evaluation == 0: continue
+
+        # Actually move the Piece
+        startPiece = MovePiece(pos.movestart, pos.moveend)
+        oppTop = FindBest(opp, assignedPlies, width, False)
+
+        if oppTop == 'C':
+            pos.mateIn = 1
+            pos.evaluation = Kval
+        elif oppTop == 'S':
+            pos.evaluation = 0
+        else:
+            if oppTop.mateIn: pos.mateIn = oppTop.mateIn + 1
+            pos.evaluation = (-1) * oppTop.evaluation
+            
+        UndoMove()
+
+        capture = (True if pieceatsqr(pos.moveend) else False)
+        pos.coords = toCoords(pos.movestart,pos.moveend,startPiece.name,capture) +\
+            "," + oppTop.coords
+
+        if first:
+            if pos.mateIn:
+                printval = "Mate in " + str(pos.mateIn // 2)
+            else:
+                printval = pos.evaluation
+            print pos.coords, "(", printval, ")"
+
+        # TODO: Add any extra plies to the assigned plies
+        # assignedPlies += (assignedPlies - oppTop.plies) / len(topMoves)
+
+    best = max(topMoves, key=e)
+
+    if first:
+        if NOISY_LOGGING:
+            print "Time:", current_time_millis() - time0
+            print "---------"
+        if best.evaluation <= -(mateThreshold) and width <= maxWidth:
+            return FindBest(colour, maxPlies, maxWidth*2, False)
+
+    return best
+
+
+# returns True if kingpos has the opposition against the enemy king
+def hasOpposition(kingpos, opp_pos):
+    a, b = kingpos, opp_pos
+    if abs(a-b) == 16 or (a/8 == b/8 and abs(a-b) == 2):
+        return True
+    elif abs(a-b) == 32 or (a/8 == b/8 and abs(a-b) == 4):
+        return True
+    elif abs(a-b) == 48 or (a/8 == b/8 and abs(a-b) == 6):
+        return True
+    # Check opposition for corners
+    elif (b==0 or b==63) and abs(a-b) == 17:
+          return True
+    elif (b==7 or b==56) and abs(a-b) == 15:
+          return True
+    return False
+
+
+# Returns true if the position seems to be an endgame
+def isEndgame():
+    if len(wp.piecelist) == 0 or len(bp.piecelist) == 0:
+        return True
+    elif len(wq.piecelist) == 0 and len(bq.piecelist) == 0:
+        return True
+    elif len(wb.piecelist) == 0 and len(wn.piecelist) == 0:
+        if len(bb.piecelist) == 0 and len(bn.piecelist) == 0:
+            return True
+    return False
+
+
 def EvaluateOpening(colour):
     evalu = 0
-    for y in wq.piecelist:
-        if y >= 24 and y <= 48:
-            evalu -= 0.5
-    for y in bq.piecelist:
-        if y >= 24 and y <= 48:
-            evalu += 0.5
 
     hs = wk.piecelist[0]
     ls = bk.piecelist[0]
@@ -97,11 +213,11 @@ def EvaluateOpening(colour):
     if hs == 2 or hs == 6:
         evalu += 0.07
     # Discourage useless king marches
-    elif not(pm.curState.wl or pm.curState.ws):
+    elif not(curState.wl or curState.ws):
         evalu -= 0.03
     if ls == 57 or ls == 62:
         evalu -= 0.07
-    elif not(pm.curState.bl or pm.curState.bs):
+    elif not(curState.bl or curState.bs):
         evalu += 0.03
 
     if colour == BLACK:
@@ -186,149 +302,6 @@ def EvaluateMiddleGame(colour):
     return evalu
 
 
-class Position:
-    evaluation = 0
-    movestart = 0
-    moveend = 0
-    mateIn = 0
-    plies = 0
-    coords = ''
-    
-
-# Returns the "best" move for colour
-def FindBest(colour, plies=maxPlies, width=maxWidth, first=True):
-    time0 = current_time_millis()
-    if width <= 0: width = 1
-    
-    if colour == WHITE:
-        pieces = pm.whitepieces
-        opp = BLACK
-    elif colour == BLACK:
-        pieces = pm.blackpieces
-        opp = WHITE
-
-    topMoves = []
-    def e(pos): return pos.evaluation
-
-    def checkSafety(i, end):
-        # Don't hang pieces unless you need to
-        if not(i) and not(isSafe(end, colour)) and isSafe(end, opp):
-            cur.evaluation -= p.value
-        # No kamikaze allowed
-        elif i and i.value < p.value and not(isSafe(end, colour)):
-            cur.evaluation -= p.value
-
-    for p in pieces:
-        for start in p.piecelist:
-            for end in PieceMovement(start):
-                cur = Position()
-                cur.movestart, cur.moveend = start, end
-
-                i = pm.pieceatsqr(end) # Executes before piece is moved
-
-                pm.MovePiece(start, end)
-                cur.evaluation = EvaluatePosition(colour)
-                #checkSafety(i, end)
-                pm.UndoMove()
-
-                if len(topMoves) < width:
-                    topMoves.append(cur)
-                    topMoves.sort(key=e)
-                elif cur.evaluation > topMoves[0].evaluation:
-                    topMoves[0] = cur
-                    topMoves.sort(key=e)
-
-                # Return right away if a mate is found
-                if cur.evaluation >= mateThreshold:
-                    cur.mateIn = 1
-                    cur.plies = 0
-                    return cur
-
-    if len(topMoves) == 0:
-        if isInCheck(colour):
-            return 'C'
-        else:
-            return 'S'
-
-    # We assign plies equally among the list of moves
-    extra = plies % len(topMoves)
-    assignedPlies = plies / len(topMoves) + (extra>0)
-    for pos in topMoves:
-        extra -= 1;
-        if extra == 0: assignedPlies -= 1
-        if assignedPlies <= 0: break
-        if pos.evaluation == 0: continue
-
-        # Actually move the Piece
-        startPiece = pm.MovePiece(pos.movestart, pos.moveend)
-        oppTop = FindBest(opp, assignedPlies, width, False)
-
-        if oppTop == 'C':
-            pos.mateIn = 1
-            pos.evaluation = Kval
-        elif oppTop == 'S':
-            pos.evaluation = 0
-        else:
-            if oppTop.mateIn: pos.mateIn = oppTop.mateIn + 1
-            pos.evaluation = (-1) * oppTop.evaluation
-            
-        pm.UndoMove()
-
-        capture = (True if pm.pieceatsqr(pos.moveend) else False)
-        pos.coords = toCoords(pos.movestart,pos.moveend,startPiece.name,capture) +\
-            "," + oppTop.coords
-
-        if first:
-            if pos.mateIn:
-                printval = "Mate in " + str(pos.mateIn // 2)
-            else:
-                printval = pos.evaluation
-            print pos.coords, "(", printval, ")"
-
-        # TODO: Add any extra plies to the assigned plies
-        # assignedPlies += (assignedPlies - oppTop.plies) / len(topMoves)
-
-    best = max(topMoves, key=e)
-
-    if first:
-        if NOISY_LOGGING:
-            print "Time:", current_time_millis() - time0
-            print "---------"
-        if best.evaluation <= -(mateThreshold) and width <= maxWidth:
-            return FindBest(colour, maxPlies, maxWidth*2, False)
-
-    return best
-
-
-# returns True if kingpos has the opposition against the enemy king
-def hasOpposition(kingpos, opp_pos):
-    a, b = kingpos, opp_pos
-    if abs(a-b) == 16 or (a/8 == b/8 and abs(a-b) == 2):
-        return True
-    elif abs(a-b) == 32 or (a/8 == b/8 and abs(a-b) == 4):
-        return True
-    elif abs(a-b) == 48 or (a/8 == b/8 and abs(a-b) == 6):
-        return True
-    # Check opposition for corners
-    elif (b==0 or b==63) and abs(a-b) == 17:
-          return True
-    elif (b==7 or b==56) and abs(a-b) == 15:
-          return True
-    return False
-
-
-# Returns true if the position seems to be an endgame
-def isEndgame():
-    if len(wp.piecelist) == 0 or len(bp.piecelist) == 0:
-        return True
-    elif len(wq.piecelist) == 0 and len(bq.piecelist) == 0:
-        return True
-    elif len(wb.piecelist) == 0 and len(wn.piecelist) == 0:
-        if len(bb.piecelist) == 0 and len(bn.piecelist) == 0:
-            return True
-    return False
-
-
 def EvaluateEndgame(colour):
     evalu = 0
     BL = pm.boardlist
@@ -376,18 +349,18 @@ def EvaluateEndgame(colour):
     
 
 def toCoords(start,end,name=None,capture=None):
-    if not(name): name = pm.pieceatsqr(start).name
-    if not(capture): capture = pm.pieceatsqr(end)
+    if not(name): name = pieceatsqr(start).name
+    if not(capture): capture = pieceatsqr(end)
     if name == 'K':
         if abs(start-end) == 2: return 'O-O'
     elif abs(start-end) == 3: return 'O-O-O'
     pre = ('' if name == 'p' else name)
-    if capture and name == 'p': pre += pm.numtocoord(start)[0]
+    if capture and name == 'p': pre += numtocoord(start)[0]
     if capture: pre += 'x'
-    return pre + pm.numtocoord(end)
+    return pre + numtocoord(end)
 
 
-def pOn(s, p): return pm.boardlist[s] == id(p)
+pOn = lambda s,p: pm.boardlist[s] == id(p)
 def queensGambit():
     if pm.boardlist[27] == id(wp) and pm.boardlist[26] == id(wp):
         return pm.boardlist[35] == id(bp)
@@ -431,7 +404,7 @@ def OpeningMoves(colour, movenum, randnum):
 
 # Profiling to see what slows the engine down
 if __name__ == '__main__':
-    pm.MovePiece(12, 28)
-    pm.MovePiece(52, 36)
-    pm.MovePiece(3, 12)
+    MovePiece(12, 28)
+    MovePiece(52, 36)
+    MovePiece(3, 12)
     cProfile.run('FindBest("b")')
