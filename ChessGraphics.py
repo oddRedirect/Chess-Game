@@ -276,7 +276,6 @@ def DoPlayerTurn(turn):
                     if temp != -1:
                         for s in pm.PieceMovement(temp):
                             if msqr == s:
-                                #print ChessEngine.toCoords(temp, msqr)
                                 checkForDead(temp, msqr)
                                 pm.MovePiece(temp, msqr)
                                 drawStuff()
@@ -324,4 +323,7 @@ def main():
 
         elif mainState.turn == BLACK:
             DoCompTurn(mainState.turn)
-main()
+
+# Main program
+if __name__ == '__main__':
+    main()
