@@ -92,7 +92,7 @@ def FindBest(colour, plies=maxPlies, width=maxWidth, first=True):
         opp = WHITE
 
     topMoves = []
-    def e(pos): return pos.evaluation
+    e = lambda pos: pos.evaluation
 
     for p in pieces:
         for start in p.piecelist:
@@ -272,7 +272,7 @@ def EvaluateMiddleGame(colour):
             evalu -= 0.035
 
     for y in wr.piecelist:
-        f, r = y%8, y/8
+        r,f = divmod(y,8)
         # Centralize rooks
         if f == 3 or f == 4:
             evalu += 0.025
@@ -285,7 +285,7 @@ def EvaluateMiddleGame(colour):
         if r == 6:
             evalu += 0.035
     for y in br.piecelist:
-        f, r = y%8, y/8
+        r,f = divmod(y,8)
         if f == 3 or f == 4:
             evalu -= 0.025
         for x in [f+8, f+16, f+24, f+32, f+40, f+48]:
