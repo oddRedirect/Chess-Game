@@ -239,59 +239,49 @@ def UndoMove(update=True):
 #helper
 def rookMovement(i):
     p = []
-    x = i - 8
-    while x >= 0:
+    for x in range(i-8,-1,-8):
         p.append(x)
         if boardlist[x] != 0:
             break
-        x -= 8
-    x = i + 8
-    while x < 64:
+    for x in range(i+8,64,8):
         p.append(x)
         if boardlist[x] != 0:
             break
-        x += 8
-    x = i - 1
-    while (x+1) % 8 > 0:
+    for x in range(i-1,i-8,-1):
+        if x%8 == 7: break
         p.append(x)
         if boardlist[x] != 0:
             break
-        x -= 1
-    x = i + 1
-    while x % 8 > 0:
+    for x in range(i+1,i+8):
+        if x%8 == 0: break
         p.append(x)
         if boardlist[x] != 0:
             break
-        x += 1
     return p
 
 #helper
 def bishopMovement(i):
     p =[]
-    x = i - 9
-    while x % 8 < 7 and x >= 0:
+    for x in range(i-9,-1,-9):
+        if x%8 == 7: break
         p.append(x)
         if boardlist[x] != 0:
             break
-        x -= 9
-    x = i + 9
-    while x % 8 > 0 and x < 64:
+    for x in range(i+9,64,9):
+        if x%8 == 0: break
         p.append(x)
         if boardlist[x] != 0:
             break
-        x += 9
-    x = i - 7
-    while x % 8 > 0 and x > 0:
+    for x in range(i-7,0,-7):
+        if x%8 == 0: break
         p.append(x)
         if boardlist[x] != 0:
             break
-        x -= 7
-    x = i + 7
-    while x % 8 < 7 and x < 64:
+    for x in range(i+7,64,7):
+        if x%8 == 7: break
         p.append(x)
         if boardlist[x] != 0:
             break
-        x += 7
     return p
 
 #helper
